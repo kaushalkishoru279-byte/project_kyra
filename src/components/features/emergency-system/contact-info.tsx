@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,9 +15,9 @@ export function ContactInfo() {
       <CardHeader>
         <div className="flex items-center gap-2">
           <UserCircle className="h-6 w-6 text-primary" />
-          <CardTitle className="font-headline">Key Contacts</CardTitle>
+          <CardTitle className="font-headline">General Key Contacts</CardTitle>
         </div>
-        <CardDescription>Important phone numbers for quick access.</CardDescription>
+        <CardDescription>Important general and medical phone numbers.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {contacts.map(contact => (
