@@ -1,10 +1,11 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  HeartPulse, Pill, Users, FileText, Siren, CloudSun, MessageSquare, BriefcaseMedical, Settings, LogOut,
+  HeartPulse, Pill, Users, FileText, Siren, CloudSun, MessageSquare, CalendarDays, Settings, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export const mainNavItems: NavItem[] = [
   { href: "/medication", label: "Medication Tracker", icon: Pill },
   { href: "/family", label: "Family Network", icon: Users },
   { href: "/records", label: "Medical Records", icon: FileText },
+  { href: "/calendar", label: "Calendar View", icon: CalendarDays },
   { href: "/emergency", label: "Emergency System", icon: Siren },
   { href: "/weather", label: "Weather Alerts", icon: CloudSun },
   { href: "/social", label: "Social Feed", icon: MessageSquare },

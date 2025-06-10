@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -84,5 +85,42 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Calendar day modifiers */
+  .day-today {
+    @apply !bg-accent/80 !text-accent-foreground font-semibold;
+  }
+  .day-today.rdp-day_selected {
+    @apply !bg-primary !text-primary-foreground font-semibold; /* Selected today has primary selection color */
+  }
+
+  .day-appointment {
+    @apply !bg-blue-200/70 dark:!bg-blue-700/50 !text-blue-800 dark:!text-blue-200;
+  }
+  .rdp-day_selected.day-appointment {
+     @apply !bg-primary !text-primary-foreground opacity-100 ring-2 ring-blue-500 ring-offset-1;
+  }
+
+
+  .day-medication {
+    @apply !bg-purple-200/70 dark:!bg-purple-700/50 !text-purple-800 dark:!text-purple-200;
+  }
+   .rdp-day_selected.day-medication {
+     @apply !bg-primary !text-primary-foreground opacity-100 ring-2 ring-purple-500 ring-offset-1;
+  }
+
+  .day-appointment-medication {
+    @apply !bg-gradient-to-br !from-blue-200/70 !to-purple-200/70 dark:!from-blue-700/50 dark:!to-purple-700/50 !text-foreground;
+  }
+  .rdp-day_selected.day-appointment-medication {
+    @apply !bg-primary !text-primary-foreground opacity-100 ring-2 ring-green-500 ring-offset-1; /* Example: green ring for combined selected */
+  }
+  
+  /* Ensure custom modifiers don't lose all other button styling */
+  .day-appointment, .day-medication, .day-appointment-medication {
+    @apply rounded-md; /* Or whatever default rounding you want for event days */
   }
 }
