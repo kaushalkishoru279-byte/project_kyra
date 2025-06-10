@@ -1,61 +1,70 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+"use client";
+
+import { useState } from 'react';
 import { Users, UserPlus, ListChecks } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
+import { useToast } from "@/hooks/use-toast";
+import { FamilyMemberForm, type FamilyMemberFormData } from "@/components/features/family-network/family-member-form";
+import { FamilyMemberList } from "@/components/features/family-network/family-member-list";
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Placeholder components for Family Network feature
-function FamilyMemberForm() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5 text-primary" />
-          Add New Family Member
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">Form for adding family member details (name, role, etc.) will be here.</p>
-        <Button className="mt-4">Save Member</Button>
-      </CardContent>
-    </Card>
-  );
+export interface FamilyMember {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  avatar: string;
+  avatarHint: string;
 }
 
-function FamilyMemberList() {
-  const members = [
-    { id: "1", name: "Alice Smith", role: "Primary Caregiver", avatar: "https://placehold.co/100x100.png" , hint: "woman smiling"},
-    { id: "2", name: "Bob Johnson", role: "Family Member", avatar: "https://placehold.co/100x100.png", hint: "man portrait" },
-    { id: "3", name: "Dr. Carol White", role: "Doctor", avatar: "https://placehold.co/100x100.png", hint: "doctor professional" },
-  ];
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ListChecks className="h-5 w-5 text-primary" />
-          Registered Family Members
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {members.map(member => (
-          <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg shadow-sm">
-            <div className="flex items-center gap-3">
-              <Image src={member.avatar} alt={member.name} data-ai-hint={member.hint} width={40} height={40} className="rounded-full" />
-              <div>
-                <p className="font-semibold">{member.name}</p>
-                <p className="text-xs text-muted-foreground">{member.role}</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm">Edit</Button>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
+const initialMembers: FamilyMember[] = [
+  { id: "1", name: "Eleanor Vance", role: "Primary Caregiver", email: "eleanor@example.com", avatar: "https://placehold.co/80x80.png", avatarHint: "woman portrait" },
+  { id: "2", name: "Dr. Arthur Green", role: "Doctor", email: "dr.green@example.com", avatar: "https://placehold.co/80x80.png", avatarHint: "doctor smiling" },
+  { id: "3", name: "Samuel Page", role: "Family Member", email: "sam.page@example.com", avatar: "https://placehold.co/80x80.png", avatarHint: "man glasses" },
+];
 
 export default function FamilyPage() {
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialMembers);
+  const { toast } = useToast();
+
+  const handleAddMember = (data: FamilyMemberFormData) => {
+    const newMember: FamilyMember = {
+      id: Date.now().toString(),
+      name: data.name,
+      role: data.role,
+      email: data.email,
+      avatar: "https://placehold.co/80x80.png", // Default avatar
+      avatarHint: "person placeholder", // Default hint
+    };
+    setFamilyMembers(prevMembers => [newMember, ...prevMembers]);
+    toast({
+      title: "Family Member Added",
+      description: `${newMember.name} has been added to your network.`,
+    });
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    const memberToDelete = familyMembers.find(m => m.id === memberId);
+    setFamilyMembers(prevMembers => prevMembers.filter(member => member.id !== memberId));
+    if (memberToDelete) {
+      toast({
+        title: "Family Member Removed",
+        description: `${memberToDelete.name} has been removed from your network.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditMember = (memberId: string) => {
+    const memberToEdit = familyMembers.find(m => m.id === memberId);
+    // For now, just log or show a toast. Full edit functionality can be added later.
+    toast({
+      title: "Edit Action (Placeholder)",
+      description: `Editing ${memberToEdit?.name}. Full functionality to be implemented.`,
+    });
+    console.log("Attempting to edit member:", memberId);
+  };
+
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div className="flex items-center gap-4">
@@ -65,9 +74,17 @@ export default function FamilyPage() {
       <p className="text-lg text-muted-foreground">
         Manage family members, assign roles, and control access to information.
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-        <FamilyMemberForm />
-        <FamilyMemberList />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+        <div className="md:col-span-1">
+          <FamilyMemberForm onAddMember={handleAddMember} />
+        </div>
+        <div className="md:col-span-2">
+          <FamilyMemberList
+            members={familyMembers}
+            onEditMember={handleEditMember}
+            onDeleteMember={handleDeleteMember}
+          />
+        </div>
       </div>
     </div>
   );
