@@ -1,10 +1,11 @@
 
 "use client";
 
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pill, Edit3, Trash2, Bell, Clock, Info } from "lucide-react";
+import { Pill, Edit3, Trash2, Bell, Clock, Info, CalendarIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -17,6 +18,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { format } from 'date-fns';
 
 export interface Medication {
   id: string;
@@ -34,10 +50,34 @@ interface MedicationListProps {
   onEdit: (medication: Medication) => void;
   onDelete: (medicationId: string) => void;
   onToggleTaken: (medicationId: string) => void;
-  onSetReminder: (medicationName: string) => void;
+  // onSetReminder: (medicationName: string) => void; // We'll handle reminder logic internally now
 }
 
-export function MedicationList({ medications, onEdit, onDelete, onToggleTaken, onSetReminder }: MedicationListProps) {
+export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }: MedicationListProps) {
+  const { toast } = useToast();
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
+  const [selectedMedicationForReminder, setSelectedMedicationForReminder] = useState<Medication | null>(null);
+  const [reminderDate, setReminderDate] = useState<Date | undefined>(new Date());
+  const [reminderTime, setReminderTime] = useState<string>("09:00");
+
+  const handleOpenReminderDialog = (medication: Medication) => {
+    setSelectedMedicationForReminder(medication);
+    setReminderDate(new Date()); // Reset to today
+    setReminderTime("09:00"); // Reset to default time
+    setIsReminderDialogOpen(true);
+  };
+
+  const handleSetReminderConfirm = () => {
+    if (selectedMedicationForReminder && reminderDate) {
+      toast({
+        title: "Reminder Set (Prototype)",
+        description: `Reminder for ${selectedMedicationForReminder.name} set for ${format(reminderDate, 'PPP')} at ${reminderTime}. (Actual notification requires backend setup)`,
+      });
+      setIsReminderDialogOpen(false);
+      setSelectedMedicationForReminder(null);
+    }
+  };
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -72,7 +112,7 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken, o
                         {med.dosage} - {med.frequency}
                       </p>
                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" /> 
+                          <Clock className="h-3 w-3" />
                           <span>Next: {med.nextDue} (Last: {med.lastTaken})</span>
                       </div>
                     </div>
@@ -100,14 +140,16 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken, o
                             </TooltipTrigger>
                             <TooltipContent side="top"><p>Edit Medication</p></TooltipContent>
                           </Tooltip>
+
                           <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
-                               <Button variant="ghost" size="icon" aria-label={`Remind for ${med.name}`} onClick={() => onSetReminder(med.name)}>
+                               <Button variant="ghost" size="icon" aria-label={`Remind for ${med.name}`} onClick={() => handleOpenReminderDialog(med)}>
                                   <Bell className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top"><p>Set Reminder</p></TooltipContent>
                           </Tooltip>
+
                           <AlertDialog>
                             <Tooltip delayDuration={100}>
                               <TooltipTrigger asChild>
@@ -143,6 +185,47 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken, o
           )}
         </TooltipProvider>
       </CardContent>
+
+      {selectedMedicationForReminder && (
+        <Dialog open={isReminderDialogOpen} onOpenChange={setIsReminderDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Set Reminder for {selectedMedicationForReminder.name}</DialogTitle>
+              <DialogDescription>
+                Choose a date and time for your medication reminder.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid items-center gap-1.5">
+                <Label htmlFor="reminder-date">Date</Label>
+                <Calendar
+                  mode="single"
+                  selected={reminderDate}
+                  onSelect={setReminderDate}
+                  initialFocus
+                  className="rounded-md border"
+                />
+              </div>
+              <div className="grid items-center gap-1.5">
+                <Label htmlFor="reminder-time">Time</Label>
+                <Input
+                  id="reminder-time"
+                  type="time"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="button" onClick={handleSetReminderConfirm}>Set Reminder</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 }

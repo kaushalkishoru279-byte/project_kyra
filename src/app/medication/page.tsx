@@ -43,8 +43,8 @@ export default function MedicationPage() {
       const newMedication: Medication = {
         id: Date.now().toString(), // Simple ID generation
         ...data,
-        lastTaken: "Not yet taken",
-        nextDue: "Pending schedule",
+        lastTaken: "Not yet taken", // These would be calculated in a real app
+        nextDue: "Pending schedule", // These would be calculated in a real app
         takenToday: false,
       };
       setMedications(prevMedications => [newMedication, ...prevMedications]);
@@ -69,22 +69,22 @@ export default function MedicationPage() {
 
   const handleToggleTaken = (medicationId: string) => {
     setMedications(prevMedications =>
-      prevMedications.map(med =>
-        med.id === medicationId ? { ...med, takenToday: !med.takenToday } : med
-      )
+      prevMedications.map(med => {
+        if (med.id === medicationId) {
+          const newTakenStatus = !med.takenToday;
+          // In a real app, update lastTaken and nextDue based on this change
+          const newLastTaken = newTakenStatus ? `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : med.lastTaken; // Simplified
+          return { ...med, takenToday: newTakenStatus, lastTaken: newLastTaken };
+        }
+        return med;
+      })
     );
     const updatedMed = medications.find(m => m.id === medicationId);
     if (updatedMed) {
-       toast({ title: "Status Updated", description: `${updatedMed.name} marked as ${!updatedMed.takenToday ? 'taken' : 'not taken'}.` });
+       toast({ title: "Status Updated", description: `${updatedMed.name} marked as ${updatedMed.takenToday ? 'taken' : 'not taken'}.` });
     }
   };
   
-  const handleSetReminder = (medicationName: string) => {
-    toast({
-      title: "Reminder Feature",
-      description: `Reminder for ${medicationName} would be set here (feature not fully implemented).`,
-    });
-  };
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -109,7 +109,7 @@ export default function MedicationPage() {
             onEdit={handleSetEditing}
             onDelete={handleDeleteMedication}
             onToggleTaken={handleToggleTaken}
-            onSetReminder={handleSetReminder}
+            // onSetReminder is now handled internally by MedicationList for dialog
           />
         </div>
       </div>
