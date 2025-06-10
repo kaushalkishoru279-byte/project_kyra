@@ -1,9 +1,41 @@
+
+"use client";
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pill, ListPlus, CalendarClock } from "lucide-react";
-import { MedicationForm } from "@/components/features/medication-tracker/medication-form";
-import { MedicationList } from "@/components/features/medication-tracker/medication-list";
+import { Pill, CalendarClock } from "lucide-react";
+import { MedicationForm, type MedicationFormData } from "@/components/features/medication-tracker/medication-form";
+import { MedicationList, type Medication } from "@/components/features/medication-tracker/medication-list";
+
+const initialMedications: Medication[] = [
+  { id: "1", name: "Lisinopril", dosage: "10mg", frequency: "Once daily (Morning)", notes: "Take with breakfast", lastTaken: "Today, 8:00 AM", nextDue: "Tomorrow, 8:00 AM", takenToday: true },
+  { id: "2", name: "Metformin", dosage: "500mg", frequency: "Twice daily (Morning, Evening)", notes: "With meals", lastTaken: "Today, 9:00 AM", nextDue: "Today, 7:00 PM", takenToday: false },
+  { id: "3", name: "Atorvastatin", dosage: "20mg", frequency: "Once daily (Evening)", notes: "Before bed", lastTaken: "Yesterday, 9:00 PM", nextDue: "Today, 9:00 PM", takenToday: false },
+];
+
 
 export default function MedicationPage() {
+  const [medications, setMedications] = useState<Medication[]>([]);
+
+  useEffect(() => {
+    // Load initial or stored medications
+    setMedications(initialMedications);
+  }, []);
+
+  const handleAddMedication = (data: MedicationFormData) => {
+    const newMedication: Medication = {
+      id: Date.now().toString(), // Simple ID generation
+      name: data.name,
+      dosage: data.dosage,
+      frequency: data.frequency,
+      notes: data.notes,
+      lastTaken: "Not yet taken", // Default values
+      nextDue: "Pending schedule",  // Default values
+      takenToday: false,          // Default values
+    };
+    setMedications(prevMedications => [...prevMedications, newMedication]);
+  };
+
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div className="flex items-center gap-4">
@@ -15,10 +47,10 @@ export default function MedicationPage() {
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1">
-          <MedicationForm />
+          <MedicationForm onAddMedication={handleAddMedication} />
         </div>
         <div className="lg:col-span-2">
-          <MedicationList />
+          <MedicationList medications={medications} />
         </div>
       </div>
        <Card className="mt-8 shadow-lg">
