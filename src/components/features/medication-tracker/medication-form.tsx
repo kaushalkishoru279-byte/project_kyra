@@ -1,15 +1,17 @@
 
 "use client";
 
+import { useEffect } from 'react';
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ListPlus, Loader2 } from "lucide-react";
+import { ListPlus, Loader2, Save, XCircle } from "lucide-react";
+import type { Medication } from "./medication-list"; // Import Medication type
 
 const medicationFormSchema = z.object({
   name: z.string().min(2, { message: "Medication name must be at least 2 characters." }),
@@ -21,10 +23,12 @@ const medicationFormSchema = z.object({
 export type MedicationFormData = z.infer<typeof medicationFormSchema>;
 
 interface MedicationFormProps {
-  onAddMedication: (data: MedicationFormData) => void;
+  onSaveMedication: (data: MedicationFormData) => void;
+  currentMedication: Medication | null; // Medication being edited
+  onCancelEdit: () => void;
 }
 
-export function MedicationForm({ onAddMedication }: MedicationFormProps) {
+export function MedicationForm({ onSaveMedication, currentMedication, onCancelEdit }: MedicationFormProps) {
   const form = useForm<MedicationFormData>({
     resolver: zodResolver(medicationFormSchema),
     defaultValues: {
@@ -35,22 +39,38 @@ export function MedicationForm({ onAddMedication }: MedicationFormProps) {
     },
   });
 
-  const {formState: { isSubmitting } } = form;
+  const { formState: { isSubmitting }, reset } = form;
+  const isEditing = !!currentMedication;
+
+  useEffect(() => {
+    if (currentMedication) {
+      reset({
+        name: currentMedication.name,
+        dosage: currentMedication.dosage,
+        frequency: currentMedication.frequency,
+        notes: currentMedication.notes || "",
+      });
+    } else {
+      reset({ name: "", dosage: "", frequency: "", notes: "" }); // Reset to defaults if not editing
+    }
+  }, [currentMedication, reset]);
 
   const onSubmit: SubmitHandler<MedicationFormData> = async (data) => {
     await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-    onAddMedication(data);
-    form.reset(); // Reset form after successful submission
+    onSaveMedication(data);
+    if (!isEditing) { // Only reset fully if it was an add operation
+        reset(); 
+    }
   };
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <ListPlus className="h-6 w-6 text-primary" />
-          <CardTitle className="font-headline">Add New Medication</CardTitle>
+          {isEditing ? <Save className="h-6 w-6 text-primary" /> : <ListPlus className="h-6 w-6 text-primary" />}
+          <CardTitle className="font-headline">{isEditing ? "Edit Medication" : "Add New Medication"}</CardTitle>
         </div>
-        <CardDescription>Enter details for a new medication to track.</CardDescription>
+        <CardDescription>{isEditing ? `Update details for ${currentMedication?.name}.` : "Enter details for a new medication."}</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -107,16 +127,26 @@ export function MedicationForm({ onAddMedication }: MedicationFormProps) {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full mt-2" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add Medication"
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditing ? "Updating..." : "Adding..."}
+                  </>
+                ) : (
+                  isEditing ? <><Save className="mr-2 h-4 w-4" /> Update Medication</> : <><ListPlus className="mr-2 h-4 w-4" /> Add Medication</>
+                )}
+              </Button>
+              {isEditing && (
+                <Button type="button" variant="outline" className="w-full" onClick={() => {
+                  onCancelEdit();
+                  reset(); // Also reset form fields on cancel
+                }}>
+                  <XCircle className="mr-2 h-4 w-4" /> Cancel Edit
+                </Button>
               )}
-            </Button>
+            </div>
           </CardContent>
         </form>
       </Form>

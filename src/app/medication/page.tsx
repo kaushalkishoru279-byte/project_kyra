@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Pill, CalendarClock } from "lucide-react";
 import { MedicationForm, type MedicationFormData } from "@/components/features/medication-tracker/medication-form";
 import { MedicationList, type Medication } from "@/components/features/medication-tracker/medication-list";
+import { useToast } from "@/hooks/use-toast";
 
 const initialMedications: Medication[] = [
   { id: "1", name: "Lisinopril", dosage: "10mg", frequency: "Once daily (Morning)", notes: "Take with breakfast", lastTaken: "Today, 8:00 AM", nextDue: "Tomorrow, 8:00 AM", takenToday: true },
@@ -16,24 +17,73 @@ const initialMedications: Medication[] = [
 
 export default function MedicationPage() {
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Load initial or stored medications
+    // In a real app, this would fetch from a DB or localStorage
     setMedications(initialMedications);
   }, []);
 
-  const handleAddMedication = (data: MedicationFormData) => {
-    const newMedication: Medication = {
-      id: Date.now().toString(), // Simple ID generation
-      name: data.name,
-      dosage: data.dosage,
-      frequency: data.frequency,
-      notes: data.notes,
-      lastTaken: "Not yet taken", // Default values
-      nextDue: "Pending schedule",  // Default values
-      takenToday: false,          // Default values
-    };
-    setMedications(prevMedications => [...prevMedications, newMedication]);
+  const handleSaveMedication = (data: MedicationFormData) => {
+    if (editingMedication) {
+      // Update existing medication
+      setMedications(prevMedications =>
+        prevMedications.map(med =>
+          med.id === editingMedication.id
+            ? { ...med, ...data, lastTaken: med.lastTaken, nextDue: med.nextDue, takenToday: med.takenToday } // Preserve status fields
+            : med
+        )
+      );
+      toast({ title: "Medication Updated", description: `${data.name} has been updated.` });
+      setEditingMedication(null); // Clear editing state
+    } else {
+      // Add new medication
+      const newMedication: Medication = {
+        id: Date.now().toString(), // Simple ID generation
+        ...data,
+        lastTaken: "Not yet taken",
+        nextDue: "Pending schedule",
+        takenToday: false,
+      };
+      setMedications(prevMedications => [newMedication, ...prevMedications]);
+      toast({ title: "Medication Added", description: `${data.name} has been added to your list.` });
+    }
+  };
+
+  const handleSetEditing = (medication: Medication | null) => {
+    setEditingMedication(medication);
+  };
+
+  const handleDeleteMedication = (medicationId: string) => {
+    const medToDelete = medications.find(m => m.id === medicationId);
+    setMedications(prevMedications => prevMedications.filter(med => med.id !== medicationId));
+    if (medToDelete) {
+      toast({ title: "Medication Deleted", description: `${medToDelete.name} has been removed.`, variant: "destructive" });
+    }
+    if (editingMedication?.id === medicationId) {
+      setEditingMedication(null); // Clear editing state if the deleted medication was being edited
+    }
+  };
+
+  const handleToggleTaken = (medicationId: string) => {
+    setMedications(prevMedications =>
+      prevMedications.map(med =>
+        med.id === medicationId ? { ...med, takenToday: !med.takenToday } : med
+      )
+    );
+    const updatedMed = medications.find(m => m.id === medicationId);
+    if (updatedMed) {
+       toast({ title: "Status Updated", description: `${updatedMed.name} marked as ${!updatedMed.takenToday ? 'taken' : 'not taken'}.` });
+    }
+  };
+  
+  const handleSetReminder = (medicationName: string) => {
+    toast({
+      title: "Reminder Feature",
+      description: `Reminder for ${medicationName} would be set here (feature not fully implemented).`,
+    });
   };
 
   return (
@@ -47,10 +97,20 @@ export default function MedicationPage() {
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1">
-          <MedicationForm onAddMedication={handleAddMedication} />
+          <MedicationForm
+            onSaveMedication={handleSaveMedication}
+            currentMedication={editingMedication}
+            onCancelEdit={() => setEditingMedication(null)}
+          />
         </div>
         <div className="lg:col-span-2">
-          <MedicationList medications={medications} />
+          <MedicationList
+            medications={medications}
+            onEdit={handleSetEditing}
+            onDelete={handleDeleteMedication}
+            onToggleTaken={handleToggleTaken}
+            onSetReminder={handleSetReminder}
+          />
         </div>
       </div>
        <Card className="mt-8 shadow-lg">
@@ -62,7 +122,7 @@ export default function MedicationPage() {
           <CardDescription>View upcoming medication schedule and any missed dose alerts.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Real-time intake tracking and alerts for missed doses will be displayed here.</p>
+          <p className="text-sm text-muted-foreground">Real-time intake tracking and alerts for missed doses will be displayed here. (Functionality to be implemented)</p>
         </CardContent>
       </Card>
     </div>
