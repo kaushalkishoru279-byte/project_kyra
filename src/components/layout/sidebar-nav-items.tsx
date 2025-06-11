@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  HeartPulse, Pill, Users, FileText, Siren, CloudSun, MessageSquare, CalendarDays, Settings, LogOut, MessagesSquare, FileArchive,
+  HeartPulse, Pill, Users, FileText, Siren, CloudSun, MessageSquare, CalendarDays, Settings, LogOut, MessagesSquare, FileArchive, ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,7 @@ export const mainNavItems: NavItem[] = [
   { href: "/social", label: "Social Feed", icon: MessageSquare },
   { href: "/chat", label: "Chat & Calls", icon: MessagesSquare },
   { href: "/vault", label: "Document Vault", icon: FileArchive },
+  { href: "/shopping", label: "Shopping Lists", icon: ShoppingCart },
 ];
 
 // Example for secondary navigation items if needed later
