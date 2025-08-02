@@ -8,10 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } // Unused, can be removed if FormLabel is used consistently
-from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const familyMemberFormSchema = z.object({
   name: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -22,15 +21,16 @@ const familyMemberFormSchema = z.object({
 export type FamilyMemberFormData = z.infer<typeof familyMemberFormSchema>;
 
 interface FamilyMemberFormProps {
-  onAddMember: (data: FamilyMemberFormData) => void;
+  onAddMember: (data: FamilyMemberFormData) => Promise<{ success: boolean; message: string }>;
 }
 
 export function FamilyMemberForm({ onAddMember }: FamilyMemberFormProps) {
+  const { toast } = useToast();
   const form = useForm<FamilyMemberFormData>({
     resolver: zodResolver(familyMemberFormSchema),
     defaultValues: {
       name: "",
-      role: undefined, // Ensure role is undefined initially for placeholder to show
+      role: undefined,
       email: "",
     },
   });
@@ -38,10 +38,13 @@ export function FamilyMemberForm({ onAddMember }: FamilyMemberFormProps) {
   const { formState: { isSubmitting }, reset } = form;
 
   const onSubmit: SubmitHandler<FamilyMemberFormData> = async (data) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    onAddMember(data);
-    reset();
+    const result = await onAddMember(data);
+    if (result.success) {
+      toast({ title: "Success", description: result.message });
+      reset();
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -114,7 +117,7 @@ export function FamilyMemberForm({ onAddMember }: FamilyMemberFormProps) {
                 </>
               ) : (
                 <>
-                  <UserPlus className="mr-2 h-4 w-4" /> Add Member
+                  <UserPlus className="mr-2 h-4 w-4" /> Add Member to Database
                 </>
               )}
             </Button>

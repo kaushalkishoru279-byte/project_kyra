@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ListChecks, Edit3, Trash2, Users2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { FamilyMember } from "@/app/family/page"; // Ensure correct path to type
+import type { FamilyMember } from "@/app/family/page";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,15 +19,39 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import { useToast } from "@/hooks/use-toast";
+import { startTransition } from "react";
 
 interface FamilyMemberListProps {
   members: FamilyMember[];
-  onEditMember: (memberId: string) => void;
-  onDeleteMember: (memberId: string) => void;
+  onEditMember: (memberId: string) => Promise<any>;
+  onDeleteMember: (memberId: string) => Promise<{ success: boolean; message: string }>;
 }
 
 export function FamilyMemberList({ members, onEditMember, onDeleteMember }: FamilyMemberListProps) {
+  const { toast } = useToast();
+  
+  const handleEdit = (memberId: string) => {
+    startTransition(async () => {
+      const result = await onEditMember(memberId);
+      toast({
+        title: "Edit Action (Placeholder)",
+        description: `Editing for member ${memberId} is a placeholder. Full implementation requires a dedicated edit form.`,
+      });
+    });
+  };
+
+  const handleDelete = (memberId: string, memberName: string) => {
+    startTransition(async () => {
+      const result = await onDeleteMember(memberId);
+      if (result.success) {
+        toast({ title: "Success", description: `${memberName} has been removed.` });
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -35,7 +59,7 @@ export function FamilyMemberList({ members, onEditMember, onDeleteMember }: Fami
           <ListChecks className="h-6 w-6 text-primary" />
           <CardTitle className="font-headline">Family & Care Team</CardTitle>
         </div>
-        <CardDescription>View and manage registered members.</CardDescription>
+        <CardDescription>View and manage registered members from the database.</CardDescription>
       </CardHeader>
       <CardContent>
         <TooltipProvider>
@@ -61,11 +85,11 @@ export function FamilyMemberList({ members, onEditMember, onDeleteMember }: Fami
                   <div className="flex gap-2 shrink-0 mt-2 sm:mt-0">
                     <Tooltip delayDuration={100}>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" aria-label={`Edit ${member.name}`} onClick={() => onEditMember(member.id)}>
+                        <Button variant="outline" size="icon" aria-label={`Edit ${member.name}`} onClick={() => handleEdit(member.id)}>
                           <Edit3 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="top"><p>Edit Member</p></TooltipContent>
+                      <TooltipContent side="top"><p>Edit Member (Placeholder)</p></TooltipContent>
                     </Tooltip>
 
                     <AlertDialog>
@@ -83,12 +107,12 @@ export function FamilyMemberList({ members, onEditMember, onDeleteMember }: Fami
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will permanently remove {member.name} from your family network.
+                            This action cannot be undone. This will permanently remove {member.name} from the database.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDeleteMember(member.id)}>
+                          <AlertDialogAction onClick={() => handleDelete(member.id, member.name)}>
                             Yes, remove member
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -101,7 +125,7 @@ export function FamilyMemberList({ members, onEditMember, onDeleteMember }: Fami
           ) : (
             <div className="text-center py-10">
               <Users2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No family members added yet.</p>
+              <p className="text-muted-foreground">No family members found in the database.</p>
               <p className="text-sm text-muted-foreground">Use the form to add your first member.</p>
             </div>
           )}

@@ -1,12 +1,11 @@
 
-"use client";
+'use server';
 
-import { useState } from 'react';
-import { Users, UserPlus, ListChecks } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Users } from "lucide-react";
 import { FamilyMemberForm, type FamilyMemberFormData } from "@/components/features/family-network/family-member-form";
 import { FamilyMemberList } from "@/components/features/family-network/family-member-list";
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { firestore } from "@/lib/firebase";
+import { revalidatePath } from "next/cache";
 
 export interface FamilyMember {
   id: string;
@@ -17,53 +16,57 @@ export interface FamilyMember {
   avatarHint: string;
 }
 
-const initialMembers: FamilyMember[] = [
-  { id: "1", name: "Eleanor Vance", role: "Primary Caregiver", email: "eleanor@example.com", avatar: "https://placehold.co/80x80.png", avatarHint: "woman portrait" },
-  { id: "2", name: "Dr. Arthur Green", role: "Doctor", email: "dr.green@example.com", avatar: "https://placehold.co/80x80.png", avatarHint: "doctor smiling" },
-  { id: "3", name: "Samuel Page", role: "Family Member", email: "sam.page@example.com", avatar: "https://placehold.co/80x80.png", avatarHint: "man glasses" },
-];
-
-export default function FamilyPage() {
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>(initialMembers);
-  const { toast } = useToast();
-
-  const handleAddMember = (data: FamilyMemberFormData) => {
-    const newMember: FamilyMember = {
-      id: Date.now().toString(),
+// Server Action to add a family member
+async function addFamilyMember(data: FamilyMemberFormData) {
+  'use server';
+  try {
+    const newMember = {
       name: data.name,
       role: data.role,
       email: data.email,
       avatar: "https://placehold.co/80x80.png", // Default avatar
       avatarHint: "person placeholder", // Default hint
     };
-    setFamilyMembers(prevMembers => [newMember, ...prevMembers]);
-    toast({
-      title: "Family Member Added",
-      description: `${newMember.name} has been added to your network.`,
-    });
-  };
+    await firestore.collection('familyMembers').add(newMember);
+    revalidatePath('/family'); // This tells Next.js to refetch the data on the page
+    return { success: true, message: "Family Member Added" };
+  } catch (error) {
+    console.error("Error adding family member:", error);
+    return { success: false, message: "Failed to add member. Please try again." };
+  }
+}
 
-  const handleDeleteMember = (memberId: string) => {
-    const memberToDelete = familyMembers.find(m => m.id === memberId);
-    setFamilyMembers(prevMembers => prevMembers.filter(member => member.id !== memberId));
-    if (memberToDelete) {
-      toast({
-        title: "Family Member Removed",
-        description: `${memberToDelete.name} has been removed from your network.`,
-        variant: "destructive",
-      });
-    }
-  };
+// Server Action to delete a family member
+async function deleteFamilyMember(memberId: string) {
+  'use server';
+  try {
+    await firestore.collection('familyMembers').doc(memberId).delete();
+    revalidatePath('/family');
+    return { success: true, message: "Family Member Removed" };
+  } catch (error) {
+    console.error("Error deleting family member:", error);
+    return { success: false, message: "Failed to remove member. Please try again." };
+  }
+}
 
-  const handleEditMember = (memberId: string) => {
-    const memberToEdit = familyMembers.find(m => m.id === memberId);
-    // For now, just log or show a toast. Full edit functionality can be added later.
-    toast({
-      title: "Edit Action (Placeholder)",
-      description: `Editing ${memberToEdit?.name}. Full functionality to be implemented.`,
-    });
+// Server Action to edit a family member (placeholder)
+async function editFamilyMember(memberId: string) {
+    'use server';
     console.log("Attempting to edit member:", memberId);
-  };
+    // In a real implementation, you would fetch the member, open a form with their data,
+    // and then have another server action to update the data in Firestore.
+    return { success: true, message: `Edit action for ${memberId} initiated. (Not fully implemented)` };
+}
+
+
+// The main page component, now fetches data directly
+export default async function FamilyPage() {
+  
+  const familyMembersSnapshot = await firestore.collection('familyMembers').get();
+  const familyMembers: FamilyMember[] = familyMembersSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as FamilyMember));
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -72,17 +75,17 @@ export default function FamilyPage() {
         <h1 className="text-4xl font-bold font-headline tracking-tight">Family Network</h1>
       </div>
       <p className="text-lg text-muted-foreground">
-        Manage family members, assign roles, and control access to information.
+        Manage family members, assign roles, and control access to information. Your data is now saved to a database.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         <div className="md:col-span-1">
-          <FamilyMemberForm onAddMember={handleAddMember} />
+          <FamilyMemberForm onAddMember={addFamilyMember} />
         </div>
         <div className="md:col-span-2">
           <FamilyMemberList
             members={familyMembers}
-            onEditMember={handleEditMember}
-            onDeleteMember={handleDeleteMember}
+            onEditMember={editFamilyMember}
+            onDeleteMember={deleteFamilyMember}
           />
         </div>
       </div>
