@@ -1,7 +1,4 @@
 
-import { config } from 'dotenv';
-config();
-
 import * as admin from 'firebase-admin';
 
 // This is a server-side only file.
