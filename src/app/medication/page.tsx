@@ -2,11 +2,12 @@
 'use server';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pill, CalendarClock } from "lucide-react";
+import { Pill, CalendarClock, AlertTriangle } from "lucide-react";
 import { MedicationForm, type MedicationFormData } from "@/components/features/medication-tracker/medication-form";
 import { MedicationList, type Medication } from "@/components/features/medication-tracker/medication-list";
 import { firestore } from "@/lib/firebase";
 import { revalidatePath } from "next/cache";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Server Action to get medications
 async function getMedications(): Promise<Medication[]> {
@@ -91,7 +92,8 @@ async function toggleMedicationTaken(id: string, currentState: Medication): Prom
 
 
 export default async function MedicationPage() {
-  const medications = await getMedications();
+  const isFirestoreConfigured = !!firestore;
+  const medications = isFirestoreConfigured ? await getMedications() : [];
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -102,6 +104,17 @@ export default async function MedicationPage() {
        <p className="text-lg text-muted-foreground">
         Keep track of medications, dosages, and schedules. Your data is now saved to the database.
       </p>
+
+      {!isFirestoreConfigured && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            The backend is not connected. Please provide your Firebase project credentials in the environment variables to enable database functionality.
+          </Description>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1">
           <MedicationForm

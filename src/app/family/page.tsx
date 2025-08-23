@@ -1,11 +1,12 @@
 
 'use server';
 
-import { Users } from "lucide-react";
+import { Users, AlertTriangle } from "lucide-react";
 import { FamilyMemberForm, type FamilyMemberFormData } from "@/components/features/family-network/family-member-form";
 import { FamilyMemberList } from "@/components/features/family-network/family-member-list";
 import { firestore } from "@/lib/firebase";
 import { revalidatePath } from "next/cache";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export interface FamilyMember {
   id: string;
@@ -69,14 +70,16 @@ async function editFamilyMember(memberId: string) {
 export default async function FamilyPage() {
   
   let familyMembers: FamilyMember[] = [];
-  if (firestore) {
+  let isFirestoreConfigured = !!firestore;
+
+  if (isFirestoreConfigured) {
     const familyMembersSnapshot = await firestore.collection('familyMembers').get();
     familyMembers = familyMembersSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as FamilyMember));
   } else {
-    console.log("Firestore is not initialized. Skipping data fetch.");
+    console.log("Firestore is not initialized. Skipping data fetch for FamilyPage.");
   }
 
 
@@ -89,6 +92,17 @@ export default async function FamilyPage() {
       <p className="text-lg text-muted-foreground">
         Manage family members, assign roles, and control access to information. Your data is now saved to a database.
       </p>
+
+      {!isFirestoreConfigured && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Firebase Not Configured</AlertTitle>
+          <AlertDescription>
+            The backend is not connected. Please provide your Firebase project credentials in the environment variables to enable database functionality.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         <div className="md:col-span-1">
           <FamilyMemberForm onAddMember={addFamilyMember} />
