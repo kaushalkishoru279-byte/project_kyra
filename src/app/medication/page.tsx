@@ -111,7 +111,7 @@ export default async function MedicationPage() {
           <AlertTitle>Firebase Not Configured</AlertTitle>
           <AlertDescription>
             The backend is not connected. Please provide your Firebase project credentials in the environment variables to enable database functionality.
-          </Description>
+          </AlertDescription>
         </Alert>
       )}
 
