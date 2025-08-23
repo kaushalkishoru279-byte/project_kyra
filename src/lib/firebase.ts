@@ -8,14 +8,14 @@ import * as admin from 'firebase-admin';
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID || 'your-project-id',
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL || 'firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com',
-  privateKey: (process.env.FIREBASE_PRIVATE_KEY || '-----BEGIN PRIVATE KEY-----\\nYOUR_PRIVATE_KEY\\n-----END PRIVATE KEY-----\\n').replace(/\\n/g, '\n'),
+  privateKey: (process.env.FIREBASE_PRIVATE_KEY || '-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n').replace(/\\n/g, '\n'),
 };
 
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     // You can also add your databaseURL here if needed
-    // databaseURL: `https://${serviceAccount.projectId}.firebaseio.com`
+    // databaseURL: `https://${service.projectId}.firebaseio.com`
   });
 }
 
