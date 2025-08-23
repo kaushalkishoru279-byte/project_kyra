@@ -1,6 +1,5 @@
 
 import * as admin from 'firebase-admin';
-import 'dotenv/config';
 
 // This is a server-side only file.
 // It uses environment variables to securely connect to Firebase.
