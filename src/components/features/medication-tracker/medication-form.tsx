@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ListPlus, Loader2, Save, XCircle } from "lucide-react";
-import type { Medication } from "./medication-list"; // Import Medication type
+import type { Medication } from "./medication-list";
+import { useToast } from "@/hooks/use-toast";
 
 const medicationFormSchema = z.object({
   name: z.string().min(2, { message: "Medication name must be at least 2 characters." }),
@@ -23,12 +24,13 @@ const medicationFormSchema = z.object({
 export type MedicationFormData = z.infer<typeof medicationFormSchema>;
 
 interface MedicationFormProps {
-  onSaveMedication: (data: MedicationFormData) => void;
-  currentMedication: Medication | null; // Medication being edited
-  onCancelEdit: () => void;
+  onSaveMedication: (data: MedicationFormData, id: string | null) => Promise<{ success: boolean; message: string }>;
+  currentMedication?: Medication | null; // Medication being edited
+  onCancelEdit?: () => void;
 }
 
 export function MedicationForm({ onSaveMedication, currentMedication, onCancelEdit }: MedicationFormProps) {
+  const { toast } = useToast();
   const form = useForm<MedicationFormData>({
     resolver: zodResolver(medicationFormSchema),
     defaultValues: {
@@ -51,15 +53,23 @@ export function MedicationForm({ onSaveMedication, currentMedication, onCancelEd
         notes: currentMedication.notes || "",
       });
     } else {
-      reset({ name: "", dosage: "", frequency: "", notes: "" }); // Reset to defaults if not editing
+      reset({ name: "", dosage: "", frequency: "", notes: "" });
     }
   }, [currentMedication, reset]);
 
   const onSubmit: SubmitHandler<MedicationFormData> = async (data) => {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-    onSaveMedication(data);
-    if (!isEditing) { // Only reset fully if it was an add operation
-        reset(); 
+    const result = await onSaveMedication(data, currentMedication ? currentMedication.id : null);
+
+    if (result.success) {
+      toast({ title: "Success", description: result.message });
+      if (!isEditing) {
+        reset();
+      }
+      if (isEditing && onCancelEdit) {
+        onCancelEdit();
+      }
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" });
     }
   };
 
@@ -138,10 +148,10 @@ export function MedicationForm({ onSaveMedication, currentMedication, onCancelEd
                   isEditing ? <><Save className="mr-2 h-4 w-4" /> Update Medication</> : <><ListPlus className="mr-2 h-4 w-4" /> Add Medication</>
                 )}
               </Button>
-              {isEditing && (
+              {isEditing && onCancelEdit && (
                 <Button type="button" variant="outline" className="w-full" onClick={() => {
                   onCancelEdit();
-                  reset(); // Also reset form fields on cancel
+                  reset();
                 }}>
                   <XCircle className="mr-2 h-4 w-4" /> Cancel Edit
                 </Button>

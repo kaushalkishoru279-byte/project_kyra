@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, startTransition } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
+import { MedicationForm, MedicationFormData } from './medication-form';
 
 export interface Medication {
   id: string;
@@ -47,26 +48,48 @@ export interface Medication {
 
 interface MedicationListProps {
   medications: Medication[];
-  onEdit: (medication: Medication) => void;
-  onDelete: (medicationId: string) => void;
-  onToggleTaken: (medicationId: string) => void;
-  // onSetReminder: (medicationName: string) => void; // We'll handle reminder logic internally now
+  onDelete: (medicationId: string) => Promise<{ success: boolean; message: string }>;
+  onToggleTaken: (medicationId: string, currentState: Medication) => Promise<{ success: boolean; message: string }>;
+  onSave: (data: MedicationFormData, id: string | null) => Promise<{ success: boolean; message: string }>;
 }
 
-export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }: MedicationListProps) {
+export function MedicationList({ medications, onDelete, onToggleTaken, onSave }: MedicationListProps) {
   const { toast } = useToast();
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   const [selectedMedicationForReminder, setSelectedMedicationForReminder] = useState<Medication | null>(null);
   const [reminderDate, setReminderDate] = useState<Date | undefined>(new Date());
   const [reminderTime, setReminderTime] = useState<string>("09:00");
 
-  const handleOpenReminderDialog = (medication: Medication) => {
-    setSelectedMedicationForReminder(medication);
-    setReminderDate(new Date()); // Reset to today
-    setReminderTime("09:00"); // Reset to default time
-    setIsReminderDialogOpen(true);
+  const handleDelete = (id: string, name: string) => {
+    startTransition(async () => {
+      const result = await onDelete(id);
+      if (result.success) {
+        toast({ title: "Success", description: `${name} has been removed.` });
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
+      }
+    });
   };
 
+  const handleToggleTaken = (med: Medication) => {
+    startTransition(async () => {
+      const result = await onToggleTaken(med.id, med);
+      if (result.success) {
+        toast({ title: "Status Updated", description: `${med.name} marked as ${!med.takenToday ? 'taken' : 'not taken'}.` });
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
+  const handleOpenReminderDialog = (medication: Medication) => {
+    setSelectedMedicationForReminder(medication);
+    setReminderDate(new Date());
+    setReminderTime("09:00");
+    setIsReminderDialogOpen(true);
+  };
+  
   const handleSetReminderConfirm = () => {
     if (selectedMedicationForReminder && reminderDate) {
       toast({
@@ -78,6 +101,16 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }:
     }
   };
 
+  if (editingMedication) {
+    return (
+      <MedicationForm
+        onSaveMedication={onSave}
+        currentMedication={editingMedication}
+        onCancelEdit={() => setEditingMedication(null)}
+      />
+    )
+  }
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -85,7 +118,7 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }:
           <Pill className="h-6 w-6 text-primary" />
           <CardTitle className="font-headline">Current Medications</CardTitle>
         </div>
-        <CardDescription>Overview of all registered medications and their status.</CardDescription>
+        <CardDescription>Overview of all registered medications from the database.</CardDescription>
       </CardHeader>
       <CardContent>
         <TooltipProvider>
@@ -121,7 +154,7 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }:
                           <Checkbox
                             id={`taken-${med.id}`}
                             checked={med.takenToday}
-                            onCheckedChange={() => onToggleTaken(med.id)}
+                            onCheckedChange={() => handleToggleTaken(med)}
                             aria-label={`Mark ${med.name} as ${med.takenToday ? 'not taken' : 'taken'}`}
                           />
                           <label
@@ -134,7 +167,7 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }:
                         <div className="flex gap-2 mt-2 sm:mt-0">
                           <Tooltip delayDuration={100}>
                             <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" aria-label={`Edit ${med.name}`} onClick={() => onEdit(med)}>
+                              <Button variant="outline" size="icon" aria-label={`Edit ${med.name}`} onClick={() => setEditingMedication(med)}>
                                   <Edit3 className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -170,7 +203,7 @@ export function MedicationList({ medications, onEdit, onDelete, onToggleTaken }:
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => onDelete(med.id)}>Delete</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDelete(med.id, med.name)}>Delete</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>

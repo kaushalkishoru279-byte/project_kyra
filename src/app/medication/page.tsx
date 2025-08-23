@@ -1,90 +1,97 @@
 
-"use client";
+'use server';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pill, CalendarClock } from "lucide-react";
 import { MedicationForm, type MedicationFormData } from "@/components/features/medication-tracker/medication-form";
 import { MedicationList, type Medication } from "@/components/features/medication-tracker/medication-list";
-import { useToast } from "@/hooks/use-toast";
+import { firestore } from "@/lib/firebase";
+import { revalidatePath } from "next/cache";
 
-const initialMedications: Medication[] = [
-  { id: "1", name: "Lisinopril", dosage: "10mg", frequency: "Once daily (Morning)", notes: "Take with breakfast", lastTaken: "Today, 8:00 AM", nextDue: "Tomorrow, 8:00 AM", takenToday: true },
-  { id: "2", name: "Metformin", dosage: "500mg", frequency: "Twice daily (Morning, Evening)", notes: "With meals", lastTaken: "Today, 9:00 AM", nextDue: "Today, 7:00 PM", takenToday: false },
-  { id: "3", name: "Atorvastatin", dosage: "20mg", frequency: "Once daily (Evening)", notes: "Before bed", lastTaken: "Yesterday, 9:00 PM", nextDue: "Today, 9:00 PM", takenToday: false },
-];
+// Server Action to get medications
+async function getMedications(): Promise<Medication[]> {
+  if (!firestore) return [];
+  try {
+    const snapshot = await firestore.collection('medications').orderBy('name').get();
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Medication));
+  } catch (error) {
+    console.error("Error fetching medications:", error);
+    return [];
+  }
+}
 
+// Server Action to save (add or update) a medication
+async function saveMedication(data: MedicationFormData, id: string | null): Promise<{ success: boolean; message: string }> {
+  'use server';
+  if (!firestore) return { success: false, message: "Firebase is not configured." };
 
-export default function MedicationPage() {
-  const [medications, setMedications] = useState<Medication[]>([]);
-  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    // Load initial or stored medications
-    // In a real app, this would fetch from a DB or localStorage
-    setMedications(initialMedications);
-  }, []);
-
-  const handleSaveMedication = (data: MedicationFormData) => {
-    if (editingMedication) {
-      // Update existing medication
-      setMedications(prevMedications =>
-        prevMedications.map(med =>
-          med.id === editingMedication.id
-            ? { ...med, ...data, lastTaken: med.lastTaken, nextDue: med.nextDue, takenToday: med.takenToday } // Preserve status fields
-            : med
-        )
-      );
-      toast({ title: "Medication Updated", description: `${data.name} has been updated.` });
-      setEditingMedication(null); // Clear editing state
+  try {
+    if (id) {
+      // Update existing
+      await firestore.collection('medications').doc(id).update(data);
+      revalidatePath('/medication');
+      return { success: true, message: "Medication Updated" };
     } else {
-      // Add new medication
-      const newMedication: Medication = {
-        id: Date.now().toString(), // Simple ID generation
+      // Add new
+      const newMedication = {
         ...data,
-        lastTaken: "Not yet taken", // These would be calculated in a real app
-        nextDue: "Pending schedule", // These would be calculated in a real app
+        lastTaken: "Not yet taken",
+        nextDue: "Pending schedule",
         takenToday: false,
       };
-      setMedications(prevMedications => [newMedication, ...prevMedications]);
-      toast({ title: "Medication Added", description: `${data.name} has been added to your list.` });
+      await firestore.collection('medications').add(newMedication);
+      revalidatePath('/medication');
+      return { success: true, message: "Medication Added" };
     }
-  };
+  } catch (error) {
+    console.error("Error saving medication:", error);
+    return { success: false, message: "Failed to save medication." };
+  }
+}
 
-  const handleSetEditing = (medication: Medication | null) => {
-    setEditingMedication(medication);
-  };
+// Server Action to delete a medication
+async function deleteMedication(id: string): Promise<{ success: boolean; message: string }> {
+  'use server';
+  if (!firestore) return { success: false, message: "Firebase is not configured." };
 
-  const handleDeleteMedication = (medicationId: string) => {
-    const medToDelete = medications.find(m => m.id === medicationId);
-    setMedications(prevMedications => prevMedications.filter(med => med.id !== medicationId));
-    if (medToDelete) {
-      toast({ title: "Medication Deleted", description: `${medToDelete.name} has been removed.`, variant: "destructive" });
-    }
-    if (editingMedication?.id === medicationId) {
-      setEditingMedication(null); // Clear editing state if the deleted medication was being edited
-    }
-  };
+  try {
+    await firestore.collection('medications').doc(id).delete();
+    revalidatePath('/medication');
+    return { success: true, message: "Medication Deleted" };
+  } catch (error) {
+    console.error("Error deleting medication:", error);
+    return { success: false, message: "Failed to delete medication." };
+  }
+}
 
-  const handleToggleTaken = (medicationId: string) => {
-    setMedications(prevMedications =>
-      prevMedications.map(med => {
-        if (med.id === medicationId) {
-          const newTakenStatus = !med.takenToday;
-          // In a real app, update lastTaken and nextDue based on this change
-          const newLastTaken = newTakenStatus ? `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : med.lastTaken; // Simplified
-          return { ...med, takenToday: newTakenStatus, lastTaken: newLastTaken };
-        }
-        return med;
-      })
-    );
-    const updatedMed = medications.find(m => m.id === medicationId);
-    if (updatedMed) {
-       toast({ title: "Status Updated", description: `${updatedMed.name} marked as ${updatedMed.takenToday ? 'taken' : 'not taken'}.` });
-    }
-  };
-  
+// Server Action to toggle taken status
+async function toggleMedicationTaken(id: string, currentState: Medication): Promise<{ success: boolean; message: string }> {
+  'use server';
+  if (!firestore) return { success: false, message: "Firebase is not configured." };
+  try {
+    const newTakenStatus = !currentState.takenToday;
+    const newLastTaken = newTakenStatus 
+      ? `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` 
+      : currentState.lastTaken; // This logic could be more sophisticated
+
+    await firestore.collection('medications').doc(id).update({
+      takenToday: newTakenStatus,
+      lastTaken: newLastTaken,
+    });
+    revalidatePath('/medication');
+    return { success: true, message: "Status Updated" };
+  } catch (error) {
+    console.error("Error updating status:", error);
+    return { success: false, message: "Failed to update status." };
+  }
+}
+
+
+export default async function MedicationPage() {
+  const medications = await getMedications();
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -93,23 +100,20 @@ export default function MedicationPage() {
         <h1 className="text-4xl font-bold font-headline tracking-tight">Medication Tracker</h1>
       </div>
        <p className="text-lg text-muted-foreground">
-        Keep track of medications, dosages, and schedules. Receive reminders for intake.
+        Keep track of medications, dosages, and schedules. Your data is now saved to the database.
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1">
           <MedicationForm
-            onSaveMedication={handleSaveMedication}
-            currentMedication={editingMedication}
-            onCancelEdit={() => setEditingMedication(null)}
+            onSaveMedication={saveMedication}
           />
         </div>
         <div className="lg:col-span-2">
           <MedicationList
             medications={medications}
-            onEdit={handleSetEditing}
-            onDelete={handleDeleteMedication}
-            onToggleTaken={handleToggleTaken}
-            // onSetReminder is now handled internally by MedicationList for dialog
+            onDelete={deleteMedication}
+            onToggleTaken={toggleMedicationTaken}
+            onSave={saveMedication}
           />
         </div>
       </div>
