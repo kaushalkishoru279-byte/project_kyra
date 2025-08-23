@@ -19,6 +19,9 @@ export interface FamilyMember {
 // Server Action to add a family member
 async function addFamilyMember(data: FamilyMemberFormData) {
   'use server';
+  if (!firestore) {
+    return { success: false, message: "Firebase is not configured. Please check your server setup." };
+  }
   try {
     const newMember = {
       name: data.name,
@@ -39,6 +42,9 @@ async function addFamilyMember(data: FamilyMemberFormData) {
 // Server Action to delete a family member
 async function deleteFamilyMember(memberId: string) {
   'use server';
+   if (!firestore) {
+    return { success: false, message: "Firebase is not configured. Please check your server setup." };
+  }
   try {
     await firestore.collection('familyMembers').doc(memberId).delete();
     revalidatePath('/family');
@@ -62,11 +68,17 @@ async function editFamilyMember(memberId: string) {
 // The main page component, now fetches data directly
 export default async function FamilyPage() {
   
-  const familyMembersSnapshot = await firestore.collection('familyMembers').get();
-  const familyMembers: FamilyMember[] = familyMembersSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as FamilyMember));
+  let familyMembers: FamilyMember[] = [];
+  if (firestore) {
+    const familyMembersSnapshot = await firestore.collection('familyMembers').get();
+    familyMembers = familyMembersSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as FamilyMember));
+  } else {
+    console.log("Firestore is not initialized. Skipping data fetch.");
+  }
+
 
   return (
     <div className="container mx-auto py-8 space-y-8">
