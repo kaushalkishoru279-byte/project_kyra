@@ -2,9 +2,9 @@
 import * as admin from 'firebase-admin';
 
 // This is a server-side only file.
-// IMPORTANT: Replace the placeholder values with your actual Firebase service account credentials.
-// You can get this from your Firebase project settings -> Service accounts -> Generate new private key.
-// It is recommended to store these credentials securely, for example, in environment variables.
+// It uses environment variables to securely connect to Firebase.
+// Make sure you have set up FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL,
+// and FIREBASE_PRIVATE_KEY in your deployment environment.
 
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
