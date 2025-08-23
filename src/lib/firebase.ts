@@ -1,31 +1,49 @@
 
 import * as admin from 'firebase-admin';
+import { config } from 'dotenv';
 
 // This is a server-side only file.
 // It uses environment variables to securely connect to Firebase.
 // Make sure you have set up FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL,
 // and FIREBASE_PRIVATE_KEY in your deployment environment.
 
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-};
+// Load environment variables from .env file
+config();
 
-// Initialize Firebase only if the project ID is available
-if (serviceAccount.projectId && !admin.apps.length) {
+const {
+  FIREBASE_PROJECT_ID,
+  FIREBASE_CLIENT_EMAIL,
+  FIREBASE_PRIVATE_KEY
+} = process.env;
+
+const hasAllCredentials = FIREBASE_PROJECT_ID && FIREBASE_CLIENT_EMAIL && FIREBASE_PRIVATE_KEY;
+
+let firestore: admin.firestore.Firestore | null = null;
+
+// Initialize Firebase only if all credentials are provided and no app has been initialized yet.
+if (hasAllCredentials && !admin.apps.length) {
   try {
+    // console.log("Initializing Firebase with provided credentials...");
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-      // You can also add your databaseURL here if needed
-      // databaseURL: `https://{serviceAccount.projectId}.firebaseio.com`
+      credential: admin.credential.cert({
+        projectId: FIREBASE_PROJECT_ID,
+        clientEmail: FIREBASE_CLIENT_EMAIL,
+        privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
     });
+    // console.log("Firebase Admin initialized successfully.");
+    firestore = admin.firestore();
   } catch (error: any) {
     console.error('Firebase Admin Initialization Error:', error.message);
-    // You can decide how to handle this error, maybe gracefully degrade features
+    // Gracefully handle the error, firestore will remain null.
   }
+} else if (!admin.apps.length) {
+    // This block will run if credentials are not set.
+    // console.log("Firebase credentials not found or incomplete. Skipping initialization.");
+} else {
+    // This block will run if an app is already initialized.
+    firestore = admin.firestore();
 }
 
-const firestore = admin.apps.length ? admin.firestore() : null;
 
 export { firestore, admin };
