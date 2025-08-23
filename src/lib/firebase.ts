@@ -1,9 +1,5 @@
 
 import * as admin from 'firebase-admin';
-import { config } from 'dotenv';
-
-// Load environment variables from .env file at the very top
-config();
 
 // This is a server-side only file.
 // It uses environment variables to securely connect to Firebase.
