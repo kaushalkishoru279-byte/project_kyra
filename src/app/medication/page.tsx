@@ -93,7 +93,18 @@ async function toggleMedicationTaken(id: string, currentState: Medication): Prom
 
 export default async function MedicationPage() {
   const isFirestoreConfigured = !!firestore;
-  const medications = isFirestoreConfigured ? await getMedications() : [];
+  let medications: Medication[] = [];
+
+  if (isFirestoreConfigured) {
+      try {
+        medications = await getMedications();
+      } catch (error) {
+        console.error("Firestore error on MedicationPage:", error);
+        // This will allow the page to render with a warning instead of crashing
+        // isFirestoreConfigured will remain true, but medications will be empty.
+      }
+  }
+
 
   return (
     <div className="container mx-auto py-8 space-y-8">

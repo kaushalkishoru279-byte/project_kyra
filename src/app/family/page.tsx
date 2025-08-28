@@ -73,13 +73,16 @@ export default async function FamilyPage() {
   let isFirestoreConfigured = !!firestore;
 
   if (isFirestoreConfigured) {
-    const familyMembersSnapshot = await firestore.collection('familyMembers').get();
-    familyMembers = familyMembersSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FamilyMember));
-  } else {
-    console.log("Firestore is not initialized. Skipping data fetch for FamilyPage.");
+    try {
+      const familyMembersSnapshot = await firestore.collection('familyMembers').get();
+      familyMembers = familyMembersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as FamilyMember));
+    } catch (error) {
+       console.error("Firestore error on FamilyPage:", error);
+       isFirestoreConfigured = false; // Assume not configured if there's an error
+    }
   }
 
 
