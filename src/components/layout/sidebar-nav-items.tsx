@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  HeartPulse, Pill, Users, FileText, Siren, CloudSun, MessageSquare, CalendarDays, Settings, LogOut, MessagesSquare, FileArchive, ShoppingCart,
+  HeartPulse, Pill, Users, FileText, Siren, CloudSun, CalendarDays, Settings, LogOut, FileArchive, ShoppingCart, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  external?: boolean;
 };
 
 export const mainNavItems: NavItem[] = [
@@ -23,8 +24,7 @@ export const mainNavItems: NavItem[] = [
   { href: "/calendar", label: "Calendar View", icon: CalendarDays },
   { href: "/emergency", label: "Emergency System", icon: Siren },
   { href: "/weather", label: "Weather Alerts", icon: CloudSun },
-  { href: "/social", label: "Social Feed", icon: MessageSquare },
-  { href: "/chat", label: "Chat & Calls", icon: MessagesSquare },
+  { href: "https://backbook.vercel.app/", label: "Social & Chat", icon: ExternalLink, external: true },
   { href: "/vault", label: "Document Vault", icon: FileArchive },
   { href: "/shopping", label: "Shopping Lists", icon: ShoppingCart },
 ];
@@ -39,6 +39,24 @@ export function SidebarNavItems() {
 
   const renderNavItems = (items: NavItem[]) => {
     return items.map((item) => {
+      if (item.external) {
+        return (
+           <a
+            key={item.href}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              "font-medium hover:font-semibold"
+            )}
+          >
+            <item.icon className="h-5 w-5 text-sidebar-foreground/80" />
+            {item.label}
+          </a>
+        )
+      }
+
       const isActive = item.href === "/" ? pathname === item.href : pathname.startsWith(item.href);
       
       return (
