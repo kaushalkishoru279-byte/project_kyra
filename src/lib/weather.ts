@@ -30,8 +30,6 @@ const weatherCodeMap: { [code: number]: string } = {
 
 
 export interface WeatherData {
-    error?: string;
-    locationName: string;
     current: {
         temperature: number;
         apparentTemperature: number;
@@ -50,10 +48,16 @@ export interface WeatherData {
     };
 }
 
+export interface WeatherDataWithLocation extends WeatherData {
+  error?: string;
+  locationName: string;
+}
+
 
 // Fallback data in case the API fails
-const mockWeatherData: WeatherData = {
+const getMockWeatherData = (errorMsg: string): WeatherDataWithLocation => ({
     locationName: "Springfield, IL (Mock Data)",
+    error: errorMsg,
     current: {
         temperature: 72,
         apparentTemperature: 70,
@@ -70,10 +74,10 @@ const mockWeatherData: WeatherData = {
         temperatureMin: [60, 62, 58, 55, 61, 63, 60],
         uvIndexMax: [5, 6, 4, 3, 7, 8, 5],
     },
-};
+});
 
 
-export async function getWeatherData(lat: number, lon: number): Promise<WeatherData> {
+export async function getWeatherData(lat: number, lon: number): Promise<WeatherDataWithLocation> {
     const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
 
     try {
@@ -84,10 +88,9 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
         const data = await response.json();
 
         // Use a reverse geocoding API to get a human-readable location name
-        // Using Open-Meteo's geocoding service for this
         const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lon}&count=1`);
         const geoData = await geoResponse.json();
-        const locationName = geoData.results?.[0]?.name ? `${geoData.results[0].name}, ${geoData.results[0].admin1}` : "Unknown Location";
+        const locationName = geoData.results?.[0]?.name ? `${geoData.results[0].name}, ${geoData.results[0].admin1 || ''}`.replace(/, $/, '') : "Unknown Location";
 
 
         return {
@@ -112,6 +115,32 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
 
     } catch (error) {
         console.error("Failed to fetch weather data:", error);
-        return { ...mockWeatherData, error: error instanceof Error ? error.message : String(error) };
+        return getMockWeatherData(error instanceof Error ? error.message : String(error));
     }
+}
+
+
+export async function getWeatherDataForCity(city: string): Promise<WeatherDataWithLocation> {
+  try {
+    const geoApiUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+    const geoResponse = await fetch(geoApiUrl);
+    if (!geoResponse.ok) {
+      throw new Error(`Geocoding API request failed with status ${geoResponse.status}`);
+    }
+    const geoData = await geoResponse.json();
+
+    if (!geoData.results || geoData.results.length === 0) {
+      throw new Error(`City "${city}" not found.`);
+    }
+
+    const { latitude, longitude } = geoData.results[0];
+    return getWeatherData(latitude, longitude);
+  } catch (error) {
+    console.error(`Failed to get weather for city ${city}:`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { 
+        ...getMockWeatherData(errorMessage), 
+        error: errorMessage 
+    };
+  }
 }
