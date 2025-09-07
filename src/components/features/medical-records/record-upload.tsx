@@ -101,10 +101,10 @@ export function RecordUpload({ onAddRecord }: RecordUploadProps) {
             <FormItem>
               <FormLabel htmlFor="recordFile">Choose File (Optional)</FormLabel>
               <FormControl>
-                <Input id="recordFile" type="file" onChange={handleFileChange} accept="image/png, image/jpeg, image/gif, application/pdf" />
+                <Input id="recordFile" type="file" onChange={handleFileChange} accept="image/png, image/jpeg, image/gif, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
               </FormControl>
               {fileNameDisplay && <p className="text-xs text-muted-foreground mt-1">Selected: {fileNameDisplay}</p>}
-              <p className="text-xs text-muted-foreground mt-1">Supported formats: PDF, JPG, PNG. (Simulated)</p>
+              <p className="text-xs text-muted-foreground mt-1">Supported: PDF, DOCX, JPG, etc. (Simulated)</p>
             </FormItem>
             
             <FormField

@@ -22,6 +22,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -95,18 +96,22 @@ export function RecordList({ records, onDeleteRecord }: RecordListProps) {
                               <Image 
                                 src={record.previewUrl} 
                                 alt={`Preview of ${record.name}`} 
-                                layout="fill" 
-                                objectFit="contain"
+                                fill
+                                style={{ objectFit: 'contain' }}
                                 data-ai-hint="medical document"
                               />
                             </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center text-center bg-muted/50 rounded-lg p-8 h-64">
                               <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                              <h3 className="font-semibold">No Preview Available</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Previews are only available for image files (JPG, PNG).
+                              <h3 className="font-semibold text-xl">No Preview Available</h3>
+                              <p className="text-sm text-muted-foreground mb-6">
+                                Previews are only available for image files. To view this document, please download it.
                               </p>
+                              <Button onClick={() => handleDownloadRecord(record.name)}>
+                                <Download className="h-4 w-4 mr-2"/>
+                                Download {record.type} File
+                              </Button>
                             </div>
                           )}
                         </div>
