@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  HeartPulse, Pill, Users, FileText, Siren, CloudSun, CalendarDays, Settings, LogOut, FileArchive, ShoppingCart, ExternalLink,
+  HeartPulse, Pill, Users, FileText, Siren, CloudSun, CalendarDays, Settings, LogOut, FileArchive, ShoppingCart, MessagesSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,7 @@ export const mainNavItems: NavItem[] = [
   { href: "/calendar", label: "Calendar View", icon: CalendarDays },
   { href: "/emergency", label: "Emergency System", icon: Siren },
   { href: "/weather", label: "Weather Alerts", icon: CloudSun },
-  { href: "https://backbook.vercel.app/", label: "Social & Chat", icon: ExternalLink, external: true },
+  { href: "/social", label: "Social & Chat", icon: MessagesSquare },
   { href: "/vault", label: "Document Vault", icon: FileArchive },
   { href: "/shopping", label: "Shopping Lists", icon: ShoppingCart },
 ];
