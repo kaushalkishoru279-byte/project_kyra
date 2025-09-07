@@ -14,17 +14,17 @@ import { useState } from "react";
 const recordFormSchema = z.object({
   name: z.string().min(3, { message: "Document name must be at least 3 characters." }),
   tags: z.string().optional(),
-  // file field is handled separately, not part of zod schema for now
 });
 
 export type RecordFormData = z.infer<typeof recordFormSchema>;
 
 interface RecordUploadProps {
-  onAddRecord: (data: RecordFormData, fileType: string, fileSize: string) => void;
+  onAddRecord: (data: RecordFormData, fileInfo: { type: string; size: string; dataUrl?: string }) => void;
 }
 
 export function RecordUpload({ onAddRecord }: RecordUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileDataUrl, setFileDataUrl] = useState<string | undefined>(undefined);
   const [fileNameDisplay, setFileNameDisplay] = useState<string>("");
 
   const form = useForm<RecordFormData>({
@@ -42,11 +42,26 @@ export function RecordUpload({ onAddRecord }: RecordUploadProps) {
     if (file) {
       setSelectedFile(file);
       setFileNameDisplay(file.name);
-      // Optionally prefill document name
-      // form.setValue("name", file.name.split('.').slice(0, -1).join('.'));
+      
+      // Prefill document name if not already set
+      if (!form.getValues("name")) {
+        form.setValue("name", file.name.replace(/\.[^/.]+$/, ""));
+      }
+
+      // Read file for preview if it's an image
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFileDataUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFileDataUrl(undefined);
+      }
     } else {
       setSelectedFile(null);
       setFileNameDisplay("");
+      setFileDataUrl(undefined);
     }
   };
 
@@ -54,14 +69,19 @@ export function RecordUpload({ onAddRecord }: RecordUploadProps) {
     // Simulate API call / file processing
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    const fileType = selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() || "FILE" : "PDF"; // Default to PDF if no file selected
-    const fileSize = selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB` : `${(Math.random() * 5).toFixed(2)}MB`; // Simulate size
+    const fileInfo = {
+      type: selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() || "FILE" : "PDF",
+      size: selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB` : `${(Math.random() * 5).toFixed(2)}MB`,
+      dataUrl: fileDataUrl,
+    };
 
-    onAddRecord(data, fileType, fileSize);
+    onAddRecord(data, fileInfo);
+    
+    // Reset form and state
     reset();
     setSelectedFile(null);
+    setFileDataUrl(undefined);
     setFileNameDisplay("");
-    // Clear the file input visually (though programmatically resetting file input is tricky)
     const fileInput = document.getElementById('recordFile') as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
@@ -81,10 +101,10 @@ export function RecordUpload({ onAddRecord }: RecordUploadProps) {
             <FormItem>
               <FormLabel htmlFor="recordFile">Choose File (Optional)</FormLabel>
               <FormControl>
-                <Input id="recordFile" type="file" onChange={handleFileChange} />
+                <Input id="recordFile" type="file" onChange={handleFileChange} accept="image/png, image/jpeg, image/gif, application/pdf" />
               </FormControl>
               {fileNameDisplay && <p className="text-xs text-muted-foreground mt-1">Selected: {fileNameDisplay}</p>}
-              <p className="text-xs text-muted-foreground mt-1">Supported formats: PDF, JPG, PNG. Max size: 5MB. (Simulated)</p>
+              <p className="text-xs text-muted-foreground mt-1">Supported formats: PDF, JPG, PNG. (Simulated)</p>
             </FormItem>
             
             <FormField

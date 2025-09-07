@@ -17,12 +17,13 @@ export interface MedicalRecord {
   type: string; // e.g., PDF, JPG
   tags: string[];
   size: string; // e.g., 1.2MB
+  previewUrl?: string; // For image previews
   // In a real app, you'd have a file path or URL here
 }
 
 const initialRecords: MedicalRecord[] = [
   { id: "1", name: "Annual Checkup Report - 2023", date: new Date(2023, 10, 15).toLocaleDateString(), type: "PDF", tags: ["annual", "bloodwork"], size: "1.2MB" },
-  { id: "2", name: "X-Ray Results - Left Knee", date: new Date(2024, 0, 20).toLocaleDateString(), type: "JPG", tags: ["xray", "orthopedics"], size: "800KB" },
+  { id: "2", name: "X-Ray Results - Left Knee", date: new Date(2024, 0, 20).toLocaleDateString(), type: "JPG", tags: ["xray", "orthopedics"], size: "800KB", previewUrl: "https://picsum.photos/seed/xray/800/600" },
   { id: "3", name: "Cardiology Consultation Notes", date: new Date(2024, 1, 10).toLocaleDateString(), type: "PDF", tags: ["cardiology", "consultation"], size: "450KB" },
 ];
 
@@ -31,14 +32,15 @@ export default function MedicalRecordsPage() {
   const [records, setRecords] = useState<MedicalRecord[]>(initialRecords);
   const { toast } = useToast();
 
-  const handleAddRecord = (data: RecordFormData, fileType: string, fileSize: string) => {
+  const handleAddRecord = (data: RecordFormData, fileInfo: { type: string; size: string; dataUrl?: string }) => {
     const newRecord: MedicalRecord = {
       id: Date.now().toString(),
       name: data.name,
       date: new Date().toLocaleDateString(), // Use current date for new uploads
-      type: fileType,
+      type: fileInfo.type,
       tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
-      size: fileSize,
+      size: fileInfo.size,
+      previewUrl: fileInfo.dataUrl,
     };
     setRecords(prevRecords => [newRecord, ...prevRecords]);
     toast({

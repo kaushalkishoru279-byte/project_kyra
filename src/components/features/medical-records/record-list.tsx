@@ -1,10 +1,11 @@
 
 "use client";
 
+import Image from "next/image";
 import type { MedicalRecord } from "@/app/records/page"; // Ensure correct path
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Download, Eye, FileText, Tag, Trash2, Files } from "lucide-react";
+import { Download, Eye, FileText, Tag, Trash2, Files, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -17,6 +18,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,13 +36,6 @@ interface RecordListProps {
 
 export function RecordList({ records, onDeleteRecord }: RecordListProps) {
   const { toast } = useToast();
-
-  const handleViewRecord = (recordName: string) => {
-    toast({
-      title: "View Record (Placeholder)",
-      description: `Viewing for ${recordName} would open here. (Not implemented)`,
-    });
-  };
 
   const handleDownloadRecord = (recordName: string) => {
     toast({
@@ -69,14 +71,47 @@ export function RecordList({ records, onDeleteRecord }: RecordListProps) {
                     )}
                   </div>
                   <div className="flex gap-2 shrink-0 mt-2 sm:mt-0">
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" aria-label={`View ${record.name}`} onClick={() => handleViewRecord(record.name)}>
-                          <Eye className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">View</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top"><p>View Record (Placeholder)</p></TooltipContent>
-                    </Tooltip>
+                    <Dialog>
+                      <Tooltip delayDuration={100}>
+                        <TooltipTrigger asChild>
+                          <DialogTrigger asChild>
+                             <Button variant="outline" size="sm" aria-label={`View ${record.name}`}>
+                              <Eye className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">View</span>
+                            </Button>
+                          </DialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="top"><p>View Record</p></TooltipContent>
+                      </Tooltip>
+                       <DialogContent className="sm:max-w-3xl">
+                        <DialogHeader>
+                          <DialogTitle className="font-headline">{record.name}</DialogTitle>
+                          <DialogDescription>
+                            Uploaded on {record.date} &bull; Type: {record.type} &bull; Size: {record.size}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                          {record.previewUrl ? (
+                            <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
+                              <Image 
+                                src={record.previewUrl} 
+                                alt={`Preview of ${record.name}`} 
+                                layout="fill" 
+                                objectFit="contain"
+                                data-ai-hint="medical document"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-center bg-muted/50 rounded-lg p-8 h-64">
+                              <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                              <h3 className="font-semibold">No Preview Available</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Previews are only available for image files (JPG, PNG).
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                     
                     <Tooltip delayDuration={100}>
                        <TooltipTrigger asChild>
@@ -84,7 +119,7 @@ export function RecordList({ records, onDeleteRecord }: RecordListProps) {
                           <Download className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">Download</span>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="top"><p>Download Record (Placeholder)</p></TooltipContent>
+                      <TooltipContent side="top"><p>Download (Placeholder)</p></TooltipContent>
                     </Tooltip>
 
                     <AlertDialog>
