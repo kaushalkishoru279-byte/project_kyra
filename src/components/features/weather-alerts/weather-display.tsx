@@ -40,13 +40,6 @@ const WeatherIcon = ({ code, size = "md" }: { code: number; size?: "sm" | "md" |
 
 
 export function WeatherDisplay({ weatherData }: { weatherData: WeatherData }) {
-  if (weatherData.error) {
-    return (
-      <div className="text-destructive text-center">
-        Failed to load weather data. Please try again later.
-      </div>
-    )
-  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -57,12 +57,12 @@ export function WeatherClient({
   
   return (
     <div className="space-y-8">
-      {weatherData.error && (
+      {weatherData.error && !weatherData.current && ( // Only show major error if no data at all
          <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error Fetching Weather</AlertTitle>
+            <AlertTitle>Error Fetching Initial Weather</AlertTitle>
             <AlertDescription>
-                Could not fetch live weather data. Displaying static mock data instead. Error: {weatherData.error}
+                Could not fetch live weather data. Displaying last known or mock data. Error: {weatherData.error}
             </AlertDescription>
         </Alert>
       )}
