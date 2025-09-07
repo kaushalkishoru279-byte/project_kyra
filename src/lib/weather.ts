@@ -77,7 +77,7 @@ const getMockWeatherData = (errorMsg: string): WeatherDataWithLocation => ({
 });
 
 
-export async function getWeatherData(lat: number, lon: number): Promise<WeatherDataWithLocation> {
+export async function getWeatherData(lat: number, lon: number, locationName?: string): Promise<WeatherDataWithLocation> {
     const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto`;
 
     try {
@@ -87,14 +87,16 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
         }
         const data = await response.json();
 
-        // Use a reverse geocoding API to get a human-readable location name
-        const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lon}&count=1`);
-        const geoData = await geoResponse.json();
-        const locationName = geoData.results?.[0]?.name ? `${geoData.results[0].name}, ${geoData.results[0].admin1 || ''}`.replace(/, $/, '') : "Unknown Location";
+        let finalLocationName = locationName;
+        if (!finalLocationName) {
+            const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lon}&count=1`);
+            const geoData = await geoResponse.json();
+            finalLocationName = geoData.results?.[0]?.name ? `${geoData.results[0].name}, ${geoData.results[0].admin1 || ''}`.replace(/, $/, '') : "Unknown Location";
+        }
 
 
         return {
-            locationName,
+            locationName: finalLocationName,
             current: {
                 temperature: data.current.temperature_2m,
                 apparentTemperature: data.current.apparent_temperature,
@@ -134,13 +136,17 @@ export async function getWeatherDataForCity(city: string): Promise<WeatherDataWi
     }
 
     const { latitude, longitude } = geoData.results[0];
-    return getWeatherData(latitude, longitude);
+    const locationName = geoData.results[0]?.name ? `${geoData.results[0].name}, ${geoData.results[0].admin1 || ''}`.replace(/, $/, '') : "Unknown Location";
+
+    return getWeatherData(latitude, longitude, locationName);
+    
   } catch (error) {
     console.error(`Failed to get weather for city ${city}:`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return { 
         ...getMockWeatherData(errorMessage), 
-        error: errorMessage 
+        error: errorMessage,
+        locationName: "Error"
     };
   }
 }
