@@ -39,18 +39,22 @@ const getFileIcon = (fileType: string) => {
 export function DocumentList({ documents, onDeleteDocument }: DocumentListProps) {
   const { toast } = useToast();
 
-  const handleViewDocument = (docName: string) => {
-    toast({
-      title: "View Document (Placeholder)",
-      description: `Viewing for ${docName} would open here. (Actual viewing not implemented)`,
-    });
+  const handleViewDocument = (docId: string) => {
+    window.open(`/api/vault/docs/${docId}`, '_blank');
   };
 
-  const handleDownloadDocument = (docName: string) => {
-    toast({
-      title: "Download Document (Placeholder)",
-      description: `Downloading ${docName}. (Actual download not implemented)`,
-    });
+  const handleDownloadDocument = async (docId: string, docName: string) => {
+    const res = await fetch(`/api/vault/docs/${docId}?download=1`);
+    if (!res.ok) return toast({ title: 'Download failed', description: 'Unable to download file.' });
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = docName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   };
 
   if (documents.length === 0) {
@@ -122,7 +126,7 @@ export function DocumentList({ documents, onDeleteDocument }: DocumentListProps)
                 <div className="flex gap-2 shrink-0 mt-3 sm:mt-0 self-start sm:self-center">
                   <Tooltip delayDuration={100}>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" aria-label={`View ${doc.name}`} onClick={() => handleViewDocument(doc.name)}>
+                      <Button variant="outline" size="sm" aria-label={`View ${doc.name}`} onClick={() => handleViewDocument(doc.id)}>
                         <Eye className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">View</span>
                       </Button>
                     </TooltipTrigger>
@@ -131,7 +135,7 @@ export function DocumentList({ documents, onDeleteDocument }: DocumentListProps)
                   
                   <Tooltip delayDuration={100}>
                      <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" aria-label={`Download ${doc.name}`} onClick={() => handleDownloadDocument(doc.name)}>
+                      <Button variant="outline" size="sm" aria-label={`Download ${doc.name}`} onClick={() => handleDownloadDocument(doc.id, doc.name)}>
                         <DownloadCloud className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">Download</span>
                       </Button>
                     </TooltipTrigger>
@@ -141,9 +145,11 @@ export function DocumentList({ documents, onDeleteDocument }: DocumentListProps)
                   <AlertDialog>
                     <Tooltip delayDuration={100}>
                       <TooltipTrigger asChild>
+                        <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" aria-label={`Delete ${doc.name}`}>
-                              <Trash2 className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">Delete</span>
+                            <Trash2 className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">Delete</span>
                           </Button>
+                        </AlertDialogTrigger>
                       </TooltipTrigger>
                       <TooltipContent side="top"><p>Delete Document</p></TooltipContent>
                     </Tooltip>

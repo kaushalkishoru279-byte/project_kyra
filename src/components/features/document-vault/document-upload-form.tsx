@@ -56,8 +56,15 @@ export function DocumentUploadForm({ onAddDocument }: DocumentUploadFormProps) {
   };
 
   const onSubmit: SubmitHandler<DocumentFormData> = async (data) => {
-    // Simulate API call / file processing
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('documentType', data.documentType);
+    formData.append('description', data.description ?? '');
+    if (selectedFile) {
+      formData.append('file', selectedFile);
+    }
+    const res = await fetch('/api/vault/docs', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('Upload failed');
     onAddDocument(data, selectedFile);
     reset();
     setSelectedFile(null);

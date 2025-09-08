@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileArchive, UploadCloud, ListChecks } from "lucide-react";
 import { DocumentUploadForm, type DocumentFormData } from "@/components/features/document-vault/document-upload-form";
@@ -12,51 +12,39 @@ import { Separator } from '@/components/ui/separator';
 export interface VaultDocument {
   id: string;
   name: string;
-  type: string; // e.g., PDF, DOCX, JPG, PNG
+  type?: string;
   description?: string;
-  uploadDate: string; // Store as ISO string or formatted string
-  uploadedBy: string; // User name or ID
-  fileSize: string; // e.g., 1.2MB (simulated)
-  // In a real app, you'd have a file path or URL here
+  createdAt: string;
+  sizeBytes: number;
 }
 
-// Mock initial documents for demonstration
-const initialDocuments: VaultDocument[] = [
-  { id: "doc1", name: "Home Insurance Policy 2024", type: "PDF", description: "Updated home insurance coverage.", uploadDate: new Date(2024, 0, 15).toLocaleDateString(), uploadedBy: "Eleanor Vance", fileSize: "2.1MB" },
-  { id: "doc2", name: "Mom's Birth Certificate", type: "JPG", uploadDate: new Date(2023, 11, 5).toLocaleDateString(), uploadedBy: "Samuel Page", fileSize: "850KB" },
-  { id: "doc3", name: "Emergency Contact List", type: "DOCX", description: "Key contacts for various emergencies.", uploadDate: new Date(2024, 1, 20).toLocaleDateString(), uploadedBy: "Eleanor Vance", fileSize: "120KB" },
-];
-
 export default function DocumentVaultPage() {
-  const [documents, setDocuments] = useState<VaultDocument[]>(initialDocuments);
+  const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const { toast } = useToast();
 
-  const handleAddDocument = (data: DocumentFormData, file: File | null) => {
-    const newDocument: VaultDocument = {
-      id: Date.now().toString(),
-      name: data.name,
-      type: data.documentType,
-      description: data.description,
-      uploadDate: new Date().toLocaleDateString(),
-      uploadedBy: "Current User", // Placeholder for logged-in user
-      fileSize: file ? `${(file.size / (1024 * 1024)).toFixed(2)}MB` : `${(Math.random() * 3 + 0.5).toFixed(1)}MB` // Simulated if no file
-    };
-    setDocuments(prevDocs => [newDocument, ...prevDocs]);
-    toast({
-      title: "Document Added",
-      description: `${newDocument.name} has been (simulated) uploaded to the vault.`,
-    });
+  const loadDocs = async () => {
+    const res = await fetch('/api/vault/docs', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    setDocuments(data as VaultDocument[]);
   };
 
-  const handleDeleteDocument = (documentId: string) => {
-    const docToDelete = documents.find(d => d.id === documentId);
-    setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== documentId));
-    if (docToDelete) {
-      toast({
-        title: "Document Deleted",
-        description: `${docToDelete.name} has been removed from the vault.`,
-        variant: "destructive",
-      });
+  useEffect(() => {
+    void loadDocs();
+  }, []);
+
+  const handleAddDocument = async (_data: DocumentFormData, _file: File | null) => {
+    await loadDocs();
+    toast({ title: 'Document Added', description: 'Your document has been securely stored.' });
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    const res = await fetch(`/api/vault/docs/${documentId}`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadDocs();
+      toast({ title: 'Document Deleted', description: 'The document has been removed.', variant: 'destructive' });
+    } else {
+      toast({ title: 'Delete failed', description: 'Unable to delete document.', variant: 'destructive' });
     }
   };
 
