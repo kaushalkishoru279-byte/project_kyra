@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, UploadCloud, Search, Tag, Users2 } from "lucide-react";
 import { RecordUpload, type RecordFormData } from "@/components/features/medical-records/record-upload";
@@ -13,51 +13,47 @@ import { useToast } from "@/hooks/use-toast";
 export interface MedicalRecord {
   id: string;
   name: string;
-  date: string; // Store as ISO string or formatted string
-  type: string; // e.g., PDF, JPG
+  createdAt: string;
+  mimeType: string;
   tags: string[];
-  size: string; // e.g., 1.2MB
-  previewUrl?: string; // For image previews
-  // In a real app, you'd have a file path or URL here
+  sizeBytes: number;
 }
-
-const initialRecords: MedicalRecord[] = [
-  { id: "1", name: "Annual Checkup Report - 2023", date: new Date(2023, 10, 15).toLocaleDateString(), type: "PDF", tags: ["annual", "bloodwork"], size: "1.2MB" },
-  { id: "2", name: "X-Ray Results - Left Knee", date: new Date(2024, 0, 20).toLocaleDateString(), type: "JPG", tags: ["xray", "orthopedics"], size: "800KB", previewUrl: "https://picsum.photos/seed/xray/800/600" },
-  { id: "3", name: "Cardiology Consultation Notes", date: new Date(2024, 1, 10).toLocaleDateString(), type: "PDF", tags: ["cardiology", "consultation"], size: "450KB" },
-];
 
 
 export default function MedicalRecordsPage() {
-  const [records, setRecords] = useState<MedicalRecord[]>(initialRecords);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
   const { toast } = useToast();
 
-  const handleAddRecord = (data: RecordFormData, fileInfo: { type: string; size: string; dataUrl?: string }) => {
-    const newRecord: MedicalRecord = {
-      id: Date.now().toString(),
-      name: data.name,
-      date: new Date().toLocaleDateString(), // Use current date for new uploads
-      type: fileInfo.type,
-      tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
-      size: fileInfo.size,
-      previewUrl: fileInfo.dataUrl,
-    };
-    setRecords(prevRecords => [newRecord, ...prevRecords]);
+  const loadRecords = async () => {
+    const res = await fetch('/api/records', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    setRecords(data as MedicalRecord[]);
+  };
+
+  useEffect(() => {
+    void loadRecords();
+  }, []);
+
+  const handleAddRecord = async (_data: RecordFormData, _fileInfo: { type: string; size: string; dataUrl?: string }) => {
+    await loadRecords();
     toast({
       title: "Record Uploaded",
-      description: `${newRecord.name} has been successfully added. (Simulated)`,
+      description: `Your document has been uploaded successfully.`,
     });
   };
 
-  const handleDeleteRecord = (recordId: string) => {
-    const recordToDelete = records.find(r => r.id === recordId);
-    setRecords(prevRecords => prevRecords.filter(record => record.id !== recordId));
-    if (recordToDelete) {
+  const handleDeleteRecord = async (recordId: string) => {
+    const res = await fetch(`/api/records/${recordId}`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadRecords();
       toast({
         title: "Record Deleted",
-        description: `${recordToDelete.name} has been deleted.`,
+        description: `The record has been deleted.`,
         variant: "destructive",
       });
+    } else {
+      toast({ title: 'Delete failed', description: 'Unable to delete record.', variant: 'destructive' });
     }
   };
 

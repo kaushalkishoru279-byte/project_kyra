@@ -38,11 +38,22 @@ interface RecordListProps {
 export function RecordList({ records, onDeleteRecord }: RecordListProps) {
   const { toast } = useToast();
 
-  const handleDownloadRecord = (recordName: string) => {
-    toast({
-      title: "Download Record (Placeholder)",
-      description: `Downloading for ${recordName} would start here. (Not implemented)`,
-    });
+  const handleDownloadRecord = async (recordId: string, recordName: string) => {
+    try {
+      const res = await fetch(`/api/records/${recordId}?download=1`);
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = recordName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      toast({ title: 'Download failed', description: 'Unable to download file.' });
+    }
   };
 
   return (
@@ -63,7 +74,7 @@ export function RecordList({ records, onDeleteRecord }: RecordListProps) {
                   <div className="flex-grow">
                     <h3 className="font-semibold text-md">{record.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                      Uploaded: {record.date} | Type: {record.type} | Size: {record.size}
+                      Uploaded: {new Date(record.createdAt).toLocaleString()} | Type: {record.mimeType} | Size: {(record.sizeBytes / (1024 * 1024)).toFixed(2)}MB
                     </p>
                     {record.tags.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -87,30 +98,37 @@ export function RecordList({ records, onDeleteRecord }: RecordListProps) {
                         <DialogHeader>
                           <DialogTitle className="font-headline">{record.name}</DialogTitle>
                           <DialogDescription>
-                            Uploaded on {record.date} &bull; Type: {record.type} &bull; Size: {record.size}
+                            Uploaded on {new Date(record.createdAt).toLocaleString()} &bull; Type: {record.mimeType} &bull; Size: {(record.sizeBytes / (1024 * 1024)).toFixed(2)}MB
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
-                          {record.previewUrl ? (
+                          {record.mimeType.startsWith('image/') ? (
                             <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
-                              <Image 
-                                src={record.previewUrl} 
-                                alt={`Preview of ${record.name}`} 
-                                fill
-                                style={{ objectFit: 'contain' }}
-                                data-ai-hint="medical document"
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={`/api/records/${record.id}`}
+                                alt={`Preview of ${record.name}`}
+                                className="object-contain w-full h-full"
+                              />
+                            </div>
+                          ) : record.mimeType === 'application/pdf' ? (
+                            <div className="rounded-md overflow-hidden" style={{ height: 600 }}>
+                              <iframe
+                                src={`/api/records/${record.id}`}
+                                title={record.name}
+                                className="w-full h-full"
                               />
                             </div>
                           ) : (
                             <div className="flex flex-col items-center justify-center text-center bg-muted/50 rounded-lg p-8 h-64">
                               <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                              <h3 className="font-semibold text-xl">No Preview Available</h3>
+                              <h3 className="font-semibold text-xl">No Inline Preview</h3>
                               <p className="text-sm text-muted-foreground mb-6">
-                                Previews are only available for image files. To view this document, please download it.
+                                This file type cannot be previewed. You can download it instead.
                               </p>
-                              <Button onClick={() => handleDownloadRecord(record.name)}>
+                              <Button onClick={() => handleDownloadRecord(record.id, record.name)}>
                                 <Download className="h-4 w-4 mr-2"/>
-                                Download {record.type} File
+                                Download File
                               </Button>
                             </div>
                           )}
@@ -120,19 +138,21 @@ export function RecordList({ records, onDeleteRecord }: RecordListProps) {
                     
                     <Tooltip delayDuration={100}>
                        <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" aria-label={`Download ${record.name}`} onClick={() => handleDownloadRecord(record.name)}>
+                        <Button variant="outline" size="sm" aria-label={`Download ${record.name}`} onClick={() => handleDownloadRecord(record.id, record.name)}>
                           <Download className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">Download</span>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="top"><p>Download (Placeholder)</p></TooltipContent>
+                      <TooltipContent side="top"><p>Download</p></TooltipContent>
                     </Tooltip>
 
                     <AlertDialog>
                       <Tooltip delayDuration={100}>
                         <TooltipTrigger asChild>
+                          <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" aria-label={`Delete ${record.name}`}>
                                 <Trash2 className="h-4 w-4 mr-1 sm:mr-0" /> <span className="sm:hidden">Delete</span>
                             </Button>
+                          </AlertDialogTrigger>
                         </TooltipTrigger>
                         <TooltipContent side="top"><p>Delete Record</p></TooltipContent>
                       </Tooltip>

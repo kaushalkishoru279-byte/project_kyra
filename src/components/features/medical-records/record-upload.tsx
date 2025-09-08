@@ -66,17 +66,29 @@ export function RecordUpload({ onAddRecord }: RecordUploadProps) {
   };
 
   const onSubmit: SubmitHandler<RecordFormData> = async (data) => {
-    // Simulate API call / file processing
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('tags', data.tags ?? '');
+    if (selectedFile) {
+      formData.append('file', selectedFile);
+    }
+
+    const res = await fetch('/api/records', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      throw new Error('Upload failed');
+    }
 
     const fileInfo = {
-      type: selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() || "FILE" : "PDF",
-      size: selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB` : `${(Math.random() * 5).toFixed(2)}MB`,
+      type: selectedFile ? (selectedFile.type || 'FILE') : 'FILE',
+      size: selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB` : '0MB',
       dataUrl: fileDataUrl,
     };
 
     onAddRecord(data, fileInfo);
-    
+
     // Reset form and state
     reset();
     setSelectedFile(null);
@@ -93,7 +105,7 @@ export function RecordUpload({ onAddRecord }: RecordUploadProps) {
           <UploadCloud className="h-6 w-6 text-primary" />
           <CardTitle className="font-headline">Upload New Record</CardTitle>
         </div>
-        <CardDescription>Add a new medical report or document. (File upload is simulated)</CardDescription>
+        <CardDescription>Add a new medical report or document.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
