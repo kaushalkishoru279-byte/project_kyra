@@ -90,14 +90,30 @@ export function MedicationList({ medications, onDelete, onToggleTaken, onSave }:
     setIsReminderDialogOpen(true);
   };
   
-  const handleSetReminderConfirm = () => {
+  const handleSetReminderConfirm = async () => {
     if (selectedMedicationForReminder && reminderDate) {
-      toast({
-        title: "Reminder Set (Prototype)",
-        description: `Reminder for ${selectedMedicationForReminder.name} set for ${format(reminderDate, 'PPP')} at ${reminderTime}. (Actual notification requires backend setup)`,
-      });
-      setIsReminderDialogOpen(false);
-      setSelectedMedicationForReminder(null);
+      try {
+        const headers = { 'X-User-Id': 'demo-user', 'Content-Type': 'application/json' } as any;
+        const scheduleTime = reminderTime || '09:00';
+        const startDate = format(reminderDate, 'yyyy-MM-dd');
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const rule = { times: [scheduleTime] };
+        const res = await fetch('/api/medications/schedules', {
+          method: 'POST', headers, body: JSON.stringify({ medicationId: selectedMedicationForReminder.id, timezone, rule, startDate })
+        });
+        if (res.ok) {
+          const sched = await res.json();
+          await fetch('/api/medications/reminders/generate', { method: 'POST', headers, body: JSON.stringify({ scheduleId: sched.id, days: 14 }) });
+          toast({ title: 'Reminder Scheduled', description: `Reminder for ${selectedMedicationForReminder.name} set for ${format(reminderDate, 'PPP')} at ${scheduleTime}.` });
+        } else {
+          toast({ title: 'Failed to set reminder', description: 'Could not create schedule.', variant: 'destructive' });
+        }
+      } catch (e) {
+        toast({ title: 'Failed to set reminder', description: 'Unexpected error.', variant: 'destructive' });
+      } finally {
+        setIsReminderDialogOpen(false);
+        setSelectedMedicationForReminder(null);
+      }
     }
   };
 

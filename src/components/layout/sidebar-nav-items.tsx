@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  HeartPulse, Pill, Users, FileText, Siren, CloudSun, CalendarDays, Settings, LogOut, FileArchive, ShoppingCart, MessagesSquare,
+  HeartPulse, Pill, Users, FileText, Siren, CloudSun, CalendarDays, Settings, LogOut, FileArchive, ShoppingCart, MessagesSquare, Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +17,15 @@ export type NavItem = {
 };
 
 export const mainNavItems: NavItem[] = [
-  { href: "/", label: "Health Monitoring", icon: HeartPulse },
+  { href: "/", label: "Dashboard", icon: HeartPulse },
+  { href: "/health", label: "Health Monitoring", icon: HeartPulse },
   { href: "/medication", label: "Medication Tracker", icon: Pill },
   { href: "/family", label: "Family Network", icon: Users },
   { href: "/records", label: "Medical Records", icon: FileText },
   { href: "/calendar", label: "Calendar View", icon: CalendarDays },
   { href: "/emergency", label: "Emergency System", icon: Siren },
   { href: "/weather", label: "Weather Alerts", icon: CloudSun },
+  { href: "/news", label: "Today's News", icon: Globe },
   { href: "/social", label: "Social & Chat", icon: MessagesSquare },
   { href: "/vault", label: "Document Vault", icon: FileArchive },
   { href: "/shopping", label: "Shopping Lists", icon: ShoppingCart },

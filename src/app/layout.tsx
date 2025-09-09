@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 import { Toaster } from '@/components/ui/toaster';
+import { initializeServices } from '@/lib/startup';
 
 export const metadata: Metadata = {
   title: 'CareConnect',
@@ -13,6 +14,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Initialize services on server startup
+  if (typeof window === 'undefined') {
+    initializeServices();
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

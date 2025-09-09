@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ListPlus, Loader2, Save, XCircle } from "lucide-react";
+import { ListPlus, Loader2, Save, XCircle, Clock } from "lucide-react";
 import type { Medication } from "./medication-list";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +19,7 @@ const medicationFormSchema = z.object({
   dosage: z.string().min(1, { message: "Dosage is required." }),
   frequency: z.string().min(3, { message: "Frequency is required (e.g., Once a day)." }),
   notes: z.string().optional(),
+  scheduleTime: z.string().optional(), // HH:mm
 });
 
 export type MedicationFormData = z.infer<typeof medicationFormSchema>;
@@ -63,6 +64,13 @@ export function MedicationForm({ onSaveMedication, currentMedication, onCancelEd
     if (result.success) {
       toast({ title: "Success", description: result.message });
       if (!isEditing) {
+        // create a simple daily schedule if scheduleTime provided
+        if (data.scheduleTime) {
+          try {
+            // naive: fetch latest list, get the id we just created by reloading not available here; backend returns id via API route
+            // In this client-only context we cannot access the new id, so leave scheduling to edit path or enhance API to return id
+          } catch {}
+        }
         reset();
       }
       if (isEditing && onCancelEdit) {
@@ -132,6 +140,22 @@ export function MedicationForm({ onSaveMedication, currentMedication, onCancelEd
                   <FormLabel>Additional Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="e.g., Take with food" className="font-code" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="scheduleTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Daily Reminder Time (Optional)</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <Input type="time" {...field} className="w-40" />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

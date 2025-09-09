@@ -1,29 +1,13 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Line, LineChart, Legend } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartTooltip, ChartTooltipContent, ChartContainer, type ChartConfig } from "@/components/ui/chart"
 import { Activity } from "lucide-react"
 
-const bpData = [
-  { date: "Mon", systolic: 120, diastolic: 80 },
-  { date: "Tue", systolic: 125, diastolic: 82 },
-  { date: "Wed", systolic: 118, diastolic: 78 },
-  { date: "Thu", systolic: 130, diastolic: 85 },
-  { date: "Fri", systolic: 122, diastolic: 80 },
-  { date: "Sat", systolic: 128, diastolic: 84 },
-  { date: "Sun", systolic: 123, diastolic: 79 },
-]
-
-const hrData = [
-  { date: "Mon", heartRate: 70 },
-  { date: "Tue", heartRate: 75 },
-  { date: "Wed", heartRate: 68 },
-  { date: "Thu", heartRate: 72 },
-  { date: "Fri", heartRate: 78 },
-  { date: "Sat", heartRate: 73 },
-  { date: "Sun", heartRate: 69 },
-]
+type HrPoint = { date: string; heartRate: number }
+type BpPoint = { date: string; systolic: number; diastolic: number }
 
 const bpChartConfig = {
   systolic: {
@@ -44,6 +28,32 @@ const hrChartConfig = {
 } satisfies ChartConfig
 
 export function HealthTrendsChart() {
+  const [bpData, setBpData] = useState<BpPoint[]>([])
+  const [hrData, setHrData] = useState<HrPoint[]>([])
+
+  useEffect(() => {
+    const load = async () => {
+      const headers = { 'X-User-Id': 'demo-user' }
+      const [bpRes, hrRes] = await Promise.all([
+        fetch('/api/health/readings?metric=blood_pressure&limit=50', { headers }),
+        fetch('/api/health/readings?metric=heart_rate&limit=50', { headers })
+      ])
+      const [bpJson, hrJson] = await Promise.all([bpRes.json(), hrRes.json()])
+      const bp = (bpJson as any[]).map(r => ({
+        date: new Date(r.taken_at).toLocaleString(),
+        systolic: r.value_json?.systolic ?? 0,
+        diastolic: r.value_json?.diastolic ?? 0,
+      })).reverse()
+      const hr = (hrJson as any[]).map(r => ({
+        date: new Date(r.taken_at).toLocaleString(),
+        heartRate: r.value_num ?? 0,
+      })).reverse()
+      setBpData(bp)
+      setHrData(hr)
+    }
+    void load()
+  }, [])
+
   return (
     <Card className="shadow-lg">
       <CardHeader>

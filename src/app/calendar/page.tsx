@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { CalendarDays, Pill, Stethoscope, Dot, Gift, PartyPopper, Plane, Video, ListChecks, CheckSquare, Trash2 } from 'lucide-react';
+import { CalendarDays, Pill, Stethoscope, Dot, Gift, PartyPopper, Plane, Video, ListChecks, CheckSquare, Trash2, RefreshCw } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,21 +35,7 @@ const today = new Date();
 const currentYear = today.getFullYear();
 const currentMonth = today.getMonth();
 
-const initialMockEvents: CalendarEvent[] = [
-  { id: '1', date: new Date(currentYear, currentMonth, 10), type: 'appointment', description: "Doctor's Checkup with Dr. Smith", time: "10:00 AM" },
-  { id: '2', date: new Date(currentYear, currentMonth, 10), type: 'medication', description: "Refill Lisinopril prescription" },
-  { id: '3', date: new Date(currentYear, currentMonth, 15), type: 'medication', description: "Take Metformin (Morning)" },
-  { id: '4', date: new Date(currentYear, currentMonth, 15), type: 'medication', description: "Take Atorvastatin (Evening)" },
-  { id: '5', date: new Date(currentYear, currentMonth, 22), type: 'appointment', description: "Dentist Appointment", time: "02:30 PM" },
-  { id: '6', date: new Date(currentYear, currentMonth, Math.min(28, today.getDate() + 1)), type: 'appointment', description: "Physical Therapy Session", time: "09:00 AM" },
-  { id: '7', date: new Date(currentYear, currentMonth, Math.min(28, today.getDate() + 1)), type: 'medication', description: "Take Vitamin D supplement" },
-  { id: '8', date: new Date(currentYear, currentMonth, today.getDate()), type: 'medication', description: "Daily Multivitamin" },
-  { id: '9', date: new Date(currentYear, currentMonth, 5), type: 'birthday', description: "Grandma's Birthday Party", time: "06:00 PM" },
-  { id: '10', date: new Date(currentYear, currentMonth, 18), type: 'generalEvent', description: "Family Game Night" },
-  { id: '11', date: new Date(currentYear, currentMonth, 25), type: 'travel', description: "Trip to the lakehouse", time: "Departing 08:00 AM" },
-  { id: '12', date: new Date(currentYear, currentMonth, 7), type: 'videoCall', description: "Video call with Aunt Susan", time: "07:30 PM" },
-  { id: '13', date: new Date(currentYear, currentMonth, 12), type: 'birthday', description: "John's Birthday" },
-];
+const initialMockEvents: CalendarEvent[] = [];
 
 const initialToDos: ToDoItem[] = [
     { id: 'todo1', text: "Buy gift for Grandma's birthday", dueDate: format(new Date(currentYear, currentMonth, 3), 'MMM dd'), completed: false },
@@ -65,11 +51,52 @@ export default function CalendarPage() {
   const [toDos, setToDos] = useState<ToDoItem[]>(initialToDos);
   const [newToDoText, setNewToDoText] = useState('');
   const [newToDoDueDate, setNewToDoDueDate] = useState('');
+  const [isLoadingReminders, setIsLoadingReminders] = useState(false);
   const { toast } = useToast();
 
+  const loadReminders = async () => {
+    setIsLoadingReminders(true);
+    try {
+      const headers = { 'X-User-Id': 'demo-user' } as any;
+      
+      // Calculate date range for the current month view
+      const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+      const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+      
+      // Add some buffer to catch reminders that might be on the edges
+      const from = new Date(firstDay);
+      from.setDate(from.getDate() - 7);
+      const to = new Date(lastDay);
+      to.setDate(to.getDate() + 7);
+      
+      const qs = `from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
+      const res = await fetch(`/api/medications/reminders?${qs}`, { headers });
+      const data = res.ok ? await res.json() : [];
+      const meds = await fetch('/api/medications', { headers });
+      const medsList = meds.ok ? await meds.json() : [];
+      const events: CalendarEvent[] = (data as any[]).map(r => {
+        const med = medsList.find((m: any) => m.id === r.medication_id);
+        const when = new Date(r.due_at);
+        return {
+          id: r.id,
+          date: when,
+          type: 'medication',
+          description: med ? `Take ${med.name} (${med.dosage})` : 'Medication reminder',
+          time: when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        } as CalendarEvent;
+      });
+      setMockEvents(events);
+    } catch (error) {
+      console.error('Error loading reminders:', error);
+      toast({ title: "Error", description: "Failed to load medication reminders", variant: "destructive" });
+    } finally {
+      setIsLoadingReminders(false);
+    }
+  };
+
   useEffect(() => {
-    setMockEvents(initialMockEvents);
-  }, []);
+    void loadReminders();
+  }, [month]);
 
   const appointmentDates = useMemo(() =>
     mockEvents
@@ -78,12 +105,16 @@ export default function CalendarPage() {
     [mockEvents]
   );
 
-  const medicationDates = useMemo(() =>
-    mockEvents
+  const medicationDates = useMemo(() => {
+    const dates = mockEvents
       .filter(e => e.type === 'medication' && !mockEvents.some(other => isSameDay(other.date, e.date) && other.type === 'appointment'))
-      .map(e => e.date),
-    [mockEvents]
-  );
+      .map(e => e.date);
+    
+    // Remove duplicates and return unique dates
+    return dates.filter((date, index, self) => 
+      self.findIndex(d => isSameDay(d, date)) === index
+    );
+  }, [mockEvents]);
 
   const appointmentAndMedicationDates = useMemo(() =>
     mockEvents
@@ -120,6 +151,10 @@ export default function CalendarPage() {
         return 0;
     });
   }, [selectedDate, mockEvents]);
+
+  const getReminderCountForDate = (date: Date) => {
+    return mockEvents.filter(event => isSameDay(event.date, date) && event.type === 'medication').length;
+  };
 
   const EventIcon = ({ type }: { type: CalendarEventType }) => {
     const iconClass = "h-5 w-5 mr-2 shrink-0";
@@ -198,8 +233,29 @@ export default function CalendarPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline">Monthly Schedule</CardTitle>
-            <CardDescription>Highlighted dates for medications and appointments. Other events listed below.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="font-headline">Monthly Schedule</CardTitle>
+                <CardDescription>
+                  Highlighted dates for medications and appointments. Other events listed below.
+                  {mockEvents.length > 0 && (
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      Loaded {mockEvents.length} medication reminders for {format(month, 'MMMM yyyy')}
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={loadReminders}
+                disabled={isLoadingReminders}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoadingReminders ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="flex justify-center">
             <Calendar

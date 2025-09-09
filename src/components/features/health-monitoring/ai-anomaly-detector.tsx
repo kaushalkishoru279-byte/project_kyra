@@ -29,6 +29,7 @@ export function AiAnomalyDetector() {
   const [analysisResult, setAnalysisResult] = useState<HealthDataOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rules, setRules] = useState<Array<{ id: string; level: 'info'|'warn'|'critical'; message: string }>>([]);
 
   const form = useForm<HealthDataFormValues>({
     resolver: zodResolver(HealthDataFormSchema),
@@ -43,15 +44,32 @@ export function AiAnomalyDetector() {
     setIsLoading(true);
     setError(null);
     setAnalysisResult(null);
+    setRules([]);
     try {
-      // Ensure the data being passed matches HealthDataInput type from the AI flow
-      const inputForAI: HealthDataInput = {
-        bloodPressure: data.bloodPressure,
-        heartRate: data.heartRate, // already a number due to coerce
-        additionalNotes: data.additionalNotes || "", // Ensure it's a string
-      };
-      const result = await analyzeHealthData(inputForAI);
-      setAnalysisResult(result);
+      // 1) Persist readings to backend
+      const [sysStr, diaStr] = data.bloodPressure.split('/');
+      const systolic = Number(sysStr);
+      const diastolic = Number(diaStr);
+      const takenAt = new Date().toISOString();
+      await Promise.all([
+        fetch('/api/health/readings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-User-Id': 'demo-user' },
+          body: JSON.stringify({ userId: 'demo-user', metric: 'blood_pressure', valueJson: { systolic, diastolic }, unit: 'mmHg', source: 'manual', takenAt })
+        }),
+        fetch('/api/health/readings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-User-Id': 'demo-user' },
+          body: JSON.stringify({ userId: 'demo-user', metric: 'heart_rate', valueNum: data.heartRate, unit: 'BPM', source: 'manual', takenAt })
+        }),
+      ]);
+
+      // 2) Analyze recent window via backend (rules + AI)
+      const analyzeRes = await fetch('/api/health/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Id': 'demo-user' }, body: JSON.stringify({ windowMinutes: 120 }) });
+      if (!analyzeRes.ok) throw new Error('Analysis failed');
+      const analyzeJson = await analyzeRes.json();
+      if (analyzeJson.ai) setAnalysisResult(analyzeJson.ai as HealthDataOutput);
+      if (analyzeJson.rules) setRules(analyzeJson.rules as typeof rules);
     } catch (e) {
       console.error("Error analyzing health data:", e);
       setError("An unexpected error occurred while analyzing health data. Please try again later.");
@@ -147,6 +165,17 @@ export function AiAnomalyDetector() {
                   <p><strong className="font-semibold">Suggested Actions:</strong> <span className="font-code">{analysisResult.suggestedActions}</span></p>
                 </AlertDescription>
               </Alert>
+            )}
+
+            {rules.length > 0 && (
+              <div className="w-full space-y-2">
+                {rules.map(r => (
+                  <Alert key={r.id} variant={r.level === 'critical' ? 'destructive' : 'default'}>
+                    <AlertTitle className="font-headline">Rule: {r.id}</AlertTitle>
+                    <AlertDescription>{r.message}</AlertDescription>
+                  </Alert>
+                ))}
+              </div>
             )}
           </CardFooter>
         </form>
