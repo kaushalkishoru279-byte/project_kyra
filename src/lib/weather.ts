@@ -89,9 +89,36 @@ export async function getWeatherData(lat: number, lon: number, locationName?: st
 
         let finalLocationName = locationName;
         if (!finalLocationName) {
-            const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lon}&count=1`);
-            const geoData = await geoResponse.json();
-            finalLocationName = geoData.results?.[0]?.name ? `${geoData.results[0].name}, ${geoData.results[0].admin1 || ''}`.replace(/, $/, '') : "Unknown Location";
+            // Use reverse geocoding to resolve coordinates to a place name
+            try {
+                const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1&language=en&format=json`);
+                if (geoResponse.ok) {
+                    const geoData = await geoResponse.json();
+                    const first = geoData.results?.[0];
+                    if (first?.name) {
+                        finalLocationName = `${first.name}, ${first.admin1 || ''}`.replace(/, $/, '');
+                    }
+                }
+            } catch (_) {}
+
+            // Secondary fallback: Nominatim (OpenStreetMap) reverse geocoding
+            if (!finalLocationName) {
+                try {
+                    const nomRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`, {
+                        headers: { 'User-Agent': 'CareConnect/1.0 (+https://example.com)' }
+                    });
+                    if (nomRes.ok) {
+                        const nom = await nomRes.json();
+                        const addr = nom.address || {};
+                        const city = addr.city || addr.town || addr.village || addr.hamlet || addr.suburb || '';
+                        const region = addr.state || addr.county || '';
+                        const composed = `${city}, ${region}`.replace(/^[,\s]+|,\s*$/g, '');
+                        if (composed) finalLocationName = composed;
+                    }
+                } catch (_) {}
+            }
+
+            if (!finalLocationName) finalLocationName = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
         }
 
 

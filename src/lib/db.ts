@@ -209,3 +209,95 @@ export async function ensureNewsTables(): Promise<void> {
 }
 
 
+export async function ensureShoppingTables(): Promise<void> {
+  const client = await getDbPool().connect();
+  try {
+    await client.query('create extension if not exists "uuid-ossp"');
+    const lists = await client.query(`select to_regclass('public.shopping_lists') as reg`);
+    if (!lists.rows[0].reg) {
+      await client.query(`create table if not exists public.shopping_lists (
+        id uuid primary key default uuid_generate_v4(),
+        user_id text not null,
+        name text not null,
+        created_at timestamptz not null default now()
+      )`);
+      await client.query(`create index if not exists idx_shopping_lists_user on public.shopping_lists(user_id)`);
+    }
+
+    const items = await client.query(`select to_regclass('public.shopping_items') as reg`);
+    if (!items.rows[0].reg) {
+      await client.query(`create table if not exists public.shopping_items (
+        id uuid primary key default uuid_generate_v4(),
+        list_id uuid not null references public.shopping_lists(id) on delete cascade,
+        text text not null,
+        completed boolean not null default false,
+        created_at timestamptz not null default now()
+      )`);
+      await client.query(`create index if not exists idx_shopping_items_list on public.shopping_items(list_id)`);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+
+export async function ensureEmergencyTables(): Promise<void> {
+  const client = await getDbPool().connect();
+  try {
+    await client.query('create extension if not exists "uuid-ossp"');
+    const contacts = await client.query(`select to_regclass('public.emergency_contacts') as reg`);
+    if (!contacts.rows[0].reg) {
+      await client.query(`create table if not exists public.emergency_contacts (
+        id uuid primary key default uuid_generate_v4(),
+        user_id text not null,
+        emergency_type text not null,
+        contact_name text not null,
+        contact_phone text not null,
+        tag text,
+        created_at timestamptz not null default now()
+      )`);
+      await client.query(`create index if not exists idx_emergency_contacts_user on public.emergency_contacts(user_id)`);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+export async function ensureChatTables(): Promise<void> {
+  const client = await getDbPool().connect();
+  try {
+    await client.query('create extension if not exists "uuid-ossp"');
+    
+    // Create conversations table
+    const conversations = await client.query(`select to_regclass('public.chat_conversations') as reg`);
+    if (!conversations.rows[0].reg) {
+      await client.query(`create table if not exists public.chat_conversations (
+        id uuid primary key default uuid_generate_v4(),
+        user_id text not null,
+        title text not null default 'New Chat',
+        created_at timestamptz not null default now(),
+        updated_at timestamptz not null default now()
+      )`);
+      await client.query(`create index if not exists idx_chat_conversations_user on public.chat_conversations(user_id)`);
+      await client.query(`create index if not exists idx_chat_conversations_updated on public.chat_conversations(updated_at desc)`);
+    }
+
+    // Create messages table
+    const messages = await client.query(`select to_regclass('public.chat_messages') as reg`);
+    if (!messages.rows[0].reg) {
+      await client.query(`create table if not exists public.chat_messages (
+        id uuid primary key default uuid_generate_v4(),
+        conversation_id uuid not null references public.chat_conversations(id) on delete cascade,
+        role text not null check (role in ('user', 'assistant', 'system')),
+        content text not null,
+        created_at timestamptz not null default now()
+      )`);
+      await client.query(`create index if not exists idx_chat_messages_conversation on public.chat_messages(conversation_id)`);
+      await client.query(`create index if not exists idx_chat_messages_created on public.chat_messages(created_at)`);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+

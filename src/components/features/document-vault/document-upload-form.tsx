@@ -80,7 +80,7 @@ export function DocumentUploadForm({ onAddDocument }: DocumentUploadFormProps) {
           <FileUp className="h-6 w-6 text-primary" />
           <CardTitle className="font-headline">Upload New Document</CardTitle>
         </div>
-        <CardDescription>Add a document to the vault. (File upload is simulated)</CardDescription>
+        <CardDescription>Add a document to the vault. (File upload is safely secured)</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>

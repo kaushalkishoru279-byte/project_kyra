@@ -1,6 +1,7 @@
 import { HeartPulse } from "lucide-react";
 import { AiAnomalyDetector } from "@/components/features/health-monitoring/ai-anomaly-detector";
 import { HealthTrendsChart } from "@/components/features/health-monitoring/health-trends-chart";
+import { HealthQA } from "@/components/features/health-monitoring/health-qa";
 
 export default function HealthMonitoringPage() {
   return (
@@ -17,7 +18,12 @@ export default function HealthMonitoringPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <AiAnomalyDetector />
         <HealthTrendsChart />
+        <div className="lg:col-span-2">
+          <HealthQA />
+        </div>
       </div>
     </div>
   );
 }
+
+

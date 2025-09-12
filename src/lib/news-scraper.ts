@@ -235,6 +235,7 @@ export class NewsScraper {
       
       // Try to fetch real RSS feeds first
       const rssFeeds = [
+        // BBC RSS Feeds
         {
           url: 'https://feeds.bbci.co.uk/news/rss.xml',
           source: 'BBC News',
@@ -254,6 +255,53 @@ export class NewsScraper {
           url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
           source: 'BBC Science',
           category: 'Science'
+        },
+        // NDTV RSS Feeds (using correct URLs)
+        {
+          url: 'https://www.ndtv.com/rss',
+          source: 'NDTV',
+          category: 'General'
+        },
+        {
+          url: 'https://www.ndtv.com/latest/rss',
+          source: 'NDTV Latest',
+          category: 'Latest'
+        },
+        {
+          url: 'https://www.ndtv.com/health/rss',
+          source: 'NDTV Health',
+          category: 'Health'
+        },
+        {
+          url: 'https://www.ndtv.com/technology/rss',
+          source: 'NDTV Technology',
+          category: 'Technology'
+        },
+        // Guardian RSS Feeds (using correct URLs)
+        {
+          url: 'https://www.theguardian.com/world/rss',
+          source: 'The Guardian',
+          category: 'World'
+        },
+        {
+          url: 'https://www.theguardian.com/uk/rss',
+          source: 'The Guardian UK',
+          category: 'UK'
+        },
+        {
+          url: 'https://www.theguardian.com/technology/rss',
+          source: 'The Guardian Technology',
+          category: 'Technology'
+        },
+        {
+          url: 'https://www.theguardian.com/science/rss',
+          source: 'The Guardian Science',
+          category: 'Science'
+        },
+        {
+          url: 'https://www.theguardian.com/society/rss',
+          source: 'The Guardian Society',
+          category: 'Society'
         }
       ];
 
@@ -372,21 +420,30 @@ export class NewsScraper {
   static async scrapeAllNews(): Promise<NewsArticle[]> {
     console.log('Starting news scraping from all sources...');
     
-    // Try RSS feeds first (more reliable)
-    const [rssNews, bbcNews, ndtvNews, guardianNews] = await Promise.allSettled([
-      this.scrapeRSSNews(),
+    // Try RSS feeds first (more reliable and comprehensive)
+    console.log('Scraping RSS News...');
+    const rssNews = await this.scrapeRSSNews();
+    console.log(`RSS: ${rssNews.length} articles`);
+
+    // If we have enough RSS articles, skip web scraping
+    if (rssNews.length >= 10) {
+      console.log('Sufficient RSS articles found, skipping web scraping...');
+      const sortedArticles = rssNews
+        .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+        .slice(0, 15);
+      console.log(`Returning ${sortedArticles.length} articles from RSS`);
+      return sortedArticles;
+    }
+
+    // If RSS didn't provide enough articles, try web scraping as backup
+    console.log('RSS provided limited articles, trying web scraping as backup...');
+    const [bbcNews, ndtvNews, guardianNews] = await Promise.allSettled([
       this.scrapeBBCNews(),
       this.scrapeNDTVNews(),
       this.scrapeGuardianNews()
     ]);
 
-    const allArticles: NewsArticle[] = [];
-    
-    // Prioritize RSS feeds
-    if (rssNews.status === 'fulfilled') {
-      allArticles.push(...rssNews.value);
-      console.log(`RSS: ${rssNews.value.length} articles`);
-    }
+    const allArticles: NewsArticle[] = [...rssNews];
     
     // Add web scraping results if available
     if (bbcNews.status === 'fulfilled' && bbcNews.value.length > 0) {
@@ -404,7 +461,7 @@ export class NewsScraper {
 
     console.log(`Total articles collected: ${allArticles.length}`);
 
-    // If no articles from any source, use fallback
+    // If still no articles, use fallback
     if (allArticles.length === 0) {
       console.log('No articles from any source, using fallback news...');
       const fallbackArticles = await this.scrapeRSSNews();

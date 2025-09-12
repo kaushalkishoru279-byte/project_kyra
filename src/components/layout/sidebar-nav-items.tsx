@@ -20,7 +20,6 @@ export const mainNavItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: HeartPulse },
   { href: "/health", label: "Health Monitoring", icon: HeartPulse },
   { href: "/medication", label: "Medication Tracker", icon: Pill },
-  { href: "/family", label: "Family Network", icon: Users },
   { href: "/records", label: "Medical Records", icon: FileText },
   { href: "/calendar", label: "Calendar View", icon: CalendarDays },
   { href: "/emergency", label: "Emergency System", icon: Siren },
@@ -29,6 +28,7 @@ export const mainNavItems: NavItem[] = [
   { href: "/social", label: "Social & Chat", icon: MessagesSquare },
   { href: "/vault", label: "Document Vault", icon: FileArchive },
   { href: "/shopping", label: "Shopping Lists", icon: ShoppingCart },
+  { href: "/carechat", label: "CareChat", icon: MessagesSquare },
 ];
 
 // Example for secondary navigation items if needed later

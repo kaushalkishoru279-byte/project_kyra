@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Siren, PhoneCall, Hospital, MapPin, ShieldAlert, ShieldPlus, ListChecks } from "lucide-react";
 import { ContactInfo } from "@/components/features/emergency-system/contact-info";
@@ -20,40 +20,49 @@ export interface CustomEmergencyContact {
   tag?: string;
 }
 
-const initialCustomContacts: CustomEmergencyContact[] = [
-  { id: "custom1", emergencyType: "House Fire", contactName: "Local Fire Department", contactPhone: "555-0303", tag: "Station 1" },
-  { id: "custom2", emergencyType: "Power Outage", contactName: "Utility Company", contactPhone: "555-0404", tag: "24/7 Line" },
-];
+const headers = { 'X-User-Id': 'demo-user', 'Content-Type': 'application/json' } as any;
 
 
 export default function EmergencyPage() {
-  const [customContacts, setCustomContacts] = useState<CustomEmergencyContact[]>(initialCustomContacts);
+  const [customContacts, setCustomContacts] = useState<CustomEmergencyContact[]>([]);
   const { toast } = useToast();
 
-  const handleAddCustomContact = (data: CustomEmergencyContactFormData) => {
-    const newContact: CustomEmergencyContact = {
-      id: Date.now().toString(),
-      emergencyType: data.emergencyType,
-      contactName: data.contactName,
-      contactPhone: data.contactPhone,
-      tag: data.tag,
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/emergency/contacts', { headers, cache: 'no-store' });
+        if (!res.ok) throw new Error('load failed');
+        const data = await res.json();
+        setCustomContacts(data);
+      } catch {
+        setCustomContacts([]);
+      }
     };
-    setCustomContacts(prev => [newContact, ...prev]);
-    toast({
-      title: "Custom Contact Added",
-      description: `${newContact.contactName} for ${newContact.emergencyType} has been added.`,
-    });
+    void load();
+  }, []);
+
+  const handleAddCustomContact = async (data: CustomEmergencyContactFormData) => {
+    try {
+      const res = await fetch('/api/emergency/contacts', { method: 'POST', headers, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error('create failed');
+      toast({ title: "Custom Contact Added", description: `${data.contactName} for ${data.emergencyType} has been added.` });
+      const reload = await fetch('/api/emergency/contacts', { headers, cache: 'no-store' });
+      setCustomContacts(reload.ok ? await reload.json() : []);
+    } catch {
+      toast({ title: "Failed to add contact", variant: "destructive" });
+    }
   };
 
-  const handleDeleteCustomContact = (contactId: string) => {
+  const handleDeleteCustomContact = async (contactId: string) => {
     const contactToDelete = customContacts.find(c => c.id === contactId);
-    setCustomContacts(prev => prev.filter(contact => contact.id !== contactId));
-    if (contactToDelete) {
-      toast({
-        title: "Custom Contact Removed",
-        description: `${contactToDelete.contactName} has been removed.`,
-        variant: "destructive",
-      });
+    try {
+      const res = await fetch(`/api/emergency/contacts?id=${encodeURIComponent(contactId)}`, { method: 'DELETE', headers });
+      if (!res.ok) throw new Error('delete failed');
+      toast({ title: "Custom Contact Removed", description: contactToDelete ? `${contactToDelete.contactName} has been removed.` : undefined, variant: "destructive" });
+      const reload = await fetch('/api/emergency/contacts', { headers, cache: 'no-store' });
+      setCustomContacts(reload.ok ? await reload.json() : []);
+    } catch {
+      toast({ title: "Failed to remove contact", variant: "destructive" });
     }
   };
 

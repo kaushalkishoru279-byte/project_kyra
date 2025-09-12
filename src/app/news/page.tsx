@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, ExternalLink, Calendar, Globe, Filter } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import { cleanAndTruncateHtml } from '@/lib/html-utils';
 
 interface NewsArticle {
   id: string;
@@ -216,7 +217,7 @@ export default function NewsPage() {
                     
                     {article.description && (
                       <p className="text-muted-foreground mb-3 line-clamp-2">
-                        {article.description}
+                        {cleanAndTruncateHtml(article.description, 200)}
                       </p>
                     )}
                     
@@ -261,3 +262,5 @@ export default function NewsPage() {
     </div>
   );
 }
+
+

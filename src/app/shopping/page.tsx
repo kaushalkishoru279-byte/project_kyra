@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, ChangeEvent, KeyboardEvent, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,81 +28,89 @@ export default function ShoppingListsPage() {
   const [newListName, setNewListName] = useState('');
   const [newItemTexts, setNewItemTexts] = useState<Record<string, string>>({}); // { listId: itemText }
   const { toast } = useToast();
+  const headers = { 'X-User-Id': 'demo-user', 'Content-Type': 'application/json' } as any;
 
-  const handleCreateList = () => {
+  const loadLists = useCallback(async () => {
+    try {
+      const res = await fetch('/api/shopping', { headers, cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load lists');
+      const data = await res.json();
+      setShoppingLists(data);
+    } catch (e) {
+      setShoppingLists([]);
+    }
+  }, []);
+
+  useEffect(() => { void loadLists(); }, [loadLists]);
+
+  const handleCreateList = async () => {
     if (!newListName.trim()) {
       toast({ title: "List name cannot be empty.", variant: "destructive" });
       return;
     }
-    const newList: ShoppingList = {
-      id: `list-${Date.now()}`,
-      name: newListName.trim(),
-      items: [],
-    };
-    setShoppingLists(prev => [newList, ...prev]);
-    setNewListName('');
-    toast({ title: "Shopping List Created", description: `"${newList.name}" has been added.` });
-  };
-
-  const handleDeleteList = (listId: string) => {
-    const listToDelete = shoppingLists.find(list => list.id === listId);
-    setShoppingLists(prev => prev.filter(list => list.id !== listId));
-    if (listToDelete) {
-      toast({ title: "Shopping List Deleted", description: `"${listToDelete.name}" has been removed.`, variant: "destructive" });
+    try {
+      const res = await fetch('/api/shopping', { method: 'POST', headers, body: JSON.stringify({ name: newListName.trim() }) });
+      if (!res.ok) throw new Error('create failed');
+      setNewListName('');
+      toast({ title: "Shopping List Created", description: `"${newListName.trim()}" has been added.` });
+      await loadLists();
+    } catch {
+      toast({ title: "Failed to create list", variant: "destructive" });
     }
   };
 
-  const handleAddItemToList = (listId: string) => {
+  const handleDeleteList = async (listId: string) => {
+    const listToDelete = shoppingLists.find(list => list.id === listId);
+    try {
+      const res = await fetch(`/api/shopping?id=${encodeURIComponent(listId)}`, { method: 'DELETE', headers });
+      if (!res.ok) throw new Error('delete failed');
+      toast({ title: "Shopping List Deleted", description: listToDelete ? `"${listToDelete.name}" has been removed.` : undefined, variant: "destructive" });
+      await loadLists();
+    } catch {
+      toast({ title: "Failed to delete list", variant: "destructive" });
+    }
+  };
+
+  const handleAddItemToList = async (listId: string) => {
     const itemText = newItemTexts[listId]?.trim();
     if (!itemText) {
       toast({ title: "Item text cannot be empty.", variant: "destructive" });
       return;
     }
-    const newItem: ShoppingListItem = {
-      id: `item-${Date.now()}`,
-      text: itemText,
-      completed: false,
-    };
-    setShoppingLists(prevLists =>
-      prevLists.map(list =>
-        list.id === listId ? { ...list, items: [newItem, ...list.items] } : list
-      )
-    );
-    setNewItemTexts(prev => ({ ...prev, [listId]: '' }));
+    try {
+      const res = await fetch('/api/shopping/items', { method: 'POST', headers, body: JSON.stringify({ listId, text: itemText }) });
+      if (!res.ok) throw new Error('add item failed');
+      setNewItemTexts(prev => ({ ...prev, [listId]: '' }));
+      await loadLists();
+    } catch {
+      toast({ title: "Failed to add item", variant: "destructive" });
+    }
   };
   
   const handleItemInputChange = (listId: string, text: string) => {
     setNewItemTexts(prev => ({ ...prev, [listId]: text }));
   };
 
-  const handleToggleItemComplete = (listId: string, itemId: string) => {
-    setShoppingLists(prevLists =>
-      prevLists.map(list =>
-        list.id === listId
-          ? {
-              ...list,
-              items: list.items.map(item =>
-                item.id === itemId ? { ...item, completed: !item.completed } : item
-              ),
-            }
-          : list
-      )
-    );
+  const handleToggleItemComplete = async (_listId: string, itemId: string, currentCompleted: boolean) => {
+    try {
+      const res = await fetch('/api/shopping/items', { method: 'PATCH', headers, body: JSON.stringify({ id: itemId, completed: !currentCompleted }) });
+      if (!res.ok) throw new Error('toggle failed');
+      await loadLists();
+    } catch {
+      toast({ title: "Failed to update item", variant: "destructive" });
+    }
   };
 
-  const handleDeleteItem = (listId: string, itemId: string) => {
+  const handleDeleteItem = async (listId: string, itemId: string) => {
     const list = shoppingLists.find(l => l.id === listId);
     const itemToDelete = list?.items.find(item => item.id === itemId);
-
-    setShoppingLists(prevLists =>
-      prevLists.map(list =>
-        list.id === listId
-          ? { ...list, items: list.items.filter(item => item.id !== itemId) }
-          : list
-      )
-    );
-    if (itemToDelete && list) {
-      toast({ title: "Item Deleted", description: `"${itemToDelete.text}" removed from "${list.name}".`, variant: "destructive" });
+    try {
+      const res = await fetch(`/api/shopping/items?id=${encodeURIComponent(itemId)}`, { method: 'DELETE', headers });
+      if (!res.ok) throw new Error('delete item failed');
+      toast({ title: "Item Deleted", description: itemToDelete && list ? `"${itemToDelete.text}" removed from "${list.name}".` : undefined, variant: "destructive" });
+      await loadLists();
+    } catch {
+      toast({ title: "Failed to delete item", variant: "destructive" });
     }
   };
 
@@ -187,7 +195,7 @@ export default function ShoppingListsPage() {
                       <Checkbox
                         id={`item-${list.id}-${item.id}`}
                         checked={item.completed}
-                        onCheckedChange={() => handleToggleItemComplete(list.id, item.id)}
+                        onCheckedChange={() => handleToggleItemComplete(list.id, item.id, item.completed)}
                         aria-label={`Mark ${item.text} as ${item.completed ? 'incomplete' : 'complete'}`}
                       />
                       <label

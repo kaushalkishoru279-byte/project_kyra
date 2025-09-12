@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Globe, RefreshCw, Calendar } from "lucide-react";
 import { format, parseISO } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import { cleanAndTruncateHtml } from '@/lib/html-utils';
 
 interface NewsArticle {
   id: string;
@@ -136,6 +137,12 @@ export function NewsWidget() {
                       </a>
                     </div>
                     
+                    {article.description && (
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                        {cleanAndTruncateHtml(article.description, 100)}
+                      </p>
+                    )}
+                    
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -172,3 +179,5 @@ export function NewsWidget() {
     </Card>
   );
 }
+
+
